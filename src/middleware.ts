@@ -4,29 +4,25 @@ import { verifyToken } from '@/lib/auth'
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
-  // Public routes that don't require authentication
-  const publicRoutes = [
+  const publicPaths = [
     '/',
     '/login',
     '/register',
     '/api/auth/login',
     '/api/auth/register',
     '/api/properties/search',
-    '/api/properties/[id]'
+    '/api/properties/',
+    '/api/uploads/',
+    '/api/rooms/',
+    '/api/cron/'
   ]
 
-  // Check if current path is public
-  const isPublicRoute = publicRoutes.some(route => {
-    if (route.includes('[')) {
-      // Handle dynamic routes
-      const pattern = route.replace(/\[.*?\]/g, '[^/]+')
-      const regex = new RegExp(`^${pattern}$`)
-      return regex.test(request.nextUrl.pathname)
-    }
-    return request.nextUrl.pathname === route
-  })
+  const isPublic = publicPaths.some(path => 
+    request.nextUrl.pathname === path || 
+    request.nextUrl.pathname.startsWith(path)
+  )
 
-  if (isPublicRoute) {
+  if (isPublic) {
     return NextResponse.next()
   }
 

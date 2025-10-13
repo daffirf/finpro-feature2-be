@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
-import { 
-  getPaginationParams, 
-  getPaginationMeta, 
-  createPaginatedResponse 
-} from '@/lib/pagination'
+import { getPaginationParams, getPaginationMeta, createPaginatedResponse } from '@/lib/pagination'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +11,16 @@ export async function GET(request: NextRequest) {
     }
 
     const user = verifyToken(token)
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (!user || user.role !== 'TENANT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { userId: user.id }
+    })
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -27,7 +31,9 @@ export async function GET(request: NextRequest) {
 
     const { page, limit, skip } = getPaginationParams(searchParams)
 
-    const where: any = { userId: user.id }
+    const where: any = {
+      property: { tenantId: tenant.id }
+    }
 
     if (status && status !== 'all') {
       where.status = status
@@ -36,7 +42,8 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { id: { contains: search, mode: 'insensitive' } },
-        { property: { name: { contains: search, mode: 'insensitive' } } }
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } }
       ]
     }
 
@@ -47,11 +54,21 @@ export async function GET(request: NextRequest) {
       prisma.booking.findMany({
         where,
         include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
           property: {
-            select: { name: true, address: true, images: true }
+            select: {
+              name: true
+            }
           },
           room: {
-            select: { name: true }
+            select: {
+              name: true
+            }
           }
         },
         orderBy,

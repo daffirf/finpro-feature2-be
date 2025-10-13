@@ -71,17 +71,39 @@ export async function POST(
       )
     }
 
+    const body = await request.json()
+    const { reason } = body
+
     // Update booking status
     const updatedBooking = await prisma.booking.update({
       where: { id: id },
       data: {
-        status: 'PENDING_PAYMENT'
+        status: 'CANCELLED'
+      },
+      include: {
+        user: {
+          select: { name: true, email: true }
+        },
+        property: {
+          select: { name: true, address: true }
+        },
+        room: {
+          select: { name: true }
+        }
       }
     })
 
+    // Send rejection email
+    try {
+      const { sendPaymentRejection } = await import('@/lib/email')
+      await sendPaymentRejection(updatedBooking, reason)
+    } catch (emailError) {
+      // Log but don't fail the request
+    }
+
     return NextResponse.json({
       booking: updatedBooking,
-      message: 'Pembayaran ditolak, status dikembalikan ke menunggu pembayaran'
+      message: 'Pembayaran ditolak, booking dibatalkan'
     })
 
   } catch (error) {

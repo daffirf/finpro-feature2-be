@@ -75,8 +75,27 @@ export async function POST(
       where: { id },
       data: {
         status: 'CONFIRMED'
+      },
+      include: {
+        user: {
+          select: { name: true, email: true }
+        },
+        property: {
+          select: { name: true, address: true }
+        },
+        room: {
+          select: { name: true }
+        }
       }
     })
+
+    // Send confirmation email
+    try {
+      const { sendBookingConfirmation } = await import('@/lib/email')
+      await sendBookingConfirmation(updatedBooking)
+    } catch (emailError) {
+      // Log but don't fail the request
+    }
 
     return NextResponse.json({
       booking: updatedBooking,

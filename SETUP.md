@@ -1,352 +1,236 @@
-# 🚀 Panduan Setup Backend dengan Data
-
-Panduan lengkap untuk setup backend API dengan database dan data dummy.
+# Setup Guide - Property Renting Backend
 
 ## 📋 Prerequisites
 
-- ✅ Node.js 18 atau lebih baru
-- ✅ Docker Desktop (recommended) atau PostgreSQL lokal
-- ✅ Git
+- Node.js 18+ 
+- PostgreSQL 14+
+- npm atau yarn
 
-## 🐳 Step 1: Setup Database dengan Docker
+## 🚀 Quick Start
 
-### 1.1. Start Docker Desktop
-
-Pastikan Docker Desktop sudah running di Windows Anda.
-
-### 1.2. Start PostgreSQL Container
-
-Jalankan perintah berikut di terminal:
+### 1. Clone & Install
 
 ```bash
-docker-compose up -d
-```
-
-Ini akan:
-- Download PostgreSQL image (jika belum ada)
-- Membuat container bernama `property-rent-db`
-- Database akan running di `localhost:5432`
-- Username: `postgres`
-- Password: `postgres123`
-- Database name: `property_rent`
-
-### 1.3. Cek Status Container
-
-```bash
-docker ps
-```
-
-Anda harus melihat container `property-rent-db` dengan status `Up`.
-
-### 1.4. Stop Container (jika diperlukan)
-
-```bash
-docker-compose down
-```
-
-### 1.5. Stop dan Hapus Data (reset total)
-
-```bash
-docker-compose down -v
-```
-
-## 📦 Step 2: Install Dependencies
-
-```bash
+git clone <repository-url>
+cd finpro-feature2-be
 npm install
 ```
 
-## ⚙️ Step 3: Setup Environment Variables
+### 2. Environment Variables
 
-File `.env.local` sudah dibuat otomatis dengan konfigurasi:
+Buat file `.env.local`:
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres123@localhost:5432/property_rent?schema=public"
-JWT_SECRET="your-super-secret-jwt-key-change-in-production-2024"
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/property_rent"
+
+# JWT Secret (WAJIB diganti di production!)
+JWT_SECRET="your-super-secret-jwt-key-minimum-32-characters"
+
+# Email Configuration
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+
+# App URL
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Cron Secret
+CRON_SECRET="your-cron-secret-key"
 ```
 
-**Note:** Untuk production, ganti `JWT_SECRET` dengan string random yang kuat!
-
-## 🗄️ Step 4: Setup Database Schema
-
-### 4.1. Generate Prisma Client
-
-```bash
-npx prisma generate
-```
-
-### 4.2. Push Schema ke Database
-
-```bash
-npm run db:push
-```
-
-Atau menggunakan prisma langsung:
-
-```bash
-npx prisma db push
-```
-
-Ini akan membuat semua tabel di database sesuai schema Prisma.
-
-## 🌱 Step 5: Seed Database dengan Data Dummy
-
-```bash
-npm run db:seed
-```
-
-Ini akan mengisi database dengan data:
-
-### Data yang Akan Dibuat:
-
-#### 👤 **4 Users:**
-1. **Regular User 1**
-   - Email: `user@example.com`
-   - Password: `password123`
-   - Name: John Doe
-
-2. **Regular User 2**
-   - Email: `user2@example.com`
-   - Password: `password123`
-   - Name: Jane Smith
-
-3. **Tenant 1**
-   - Email: `tenant1@example.com`
-   - Password: `password123`
-   - Name: Budi Santoso
-   - Business: Bali Villa Paradise
-
-4. **Tenant 2**
-   - Email: `tenant2@example.com`
-   - Password: `password123`
-   - Name: Siti Rahayu
-   - Business: Jakarta Apartement
-
-#### 🏢 **2 Tenants:**
-- Bali Villa Paradise
-- Jakarta Apartement
-
-#### 🏠 **4 Properties:**
-1. Villa Sunset View (Bali) - Rp 1.500.000/malam
-2. Villa Ocean Breeze (Bali) - Rp 2.000.000/malam
-3. Luxury Apartement Sudirman (Jakarta) - Rp 800.000/malam
-4. Modern Studio Senopati (Jakarta) - Rp 500.000/malam
-
-#### 🛏️ **5 Rooms:**
-- Various room types across all properties
-
-#### 💰 **3 Price Rules:**
-- Weekend pricing
-- Holiday season pricing
-- Weekday discounts
-
-#### 📅 **3 Bookings:**
-- Different statuses (CONFIRMED, PENDING_PAYMENT, COMPLETED)
-
-#### ⭐ **1 Review:**
-- 5-star review dengan response dari tenant
-
-## 🚀 Step 6: Run Development Server
-
-```bash
-npm run dev
-```
-
-Server akan berjalan di: **http://localhost:3000**
-
-## 🧪 Step 7: Test API
-
-### Test 1: Register User Baru
-
-```bash
-POST http://localhost:3000/api/auth/register
-Content-Type: application/json
-
-{
-  "email": "newuser@example.com",
-  "password": "password123",
-  "name": "New User",
-  "role": "USER"
-}
-```
-
-### Test 2: Login
-
-```bash
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-Response akan berisi `token` yang bisa Anda gunakan untuk API lainnya.
-
-### Test 3: Get User Profile
-
-```bash
-GET http://localhost:3000/api/auth/me
-Authorization: Bearer <your-token-here>
-```
-
-### Test 4: Search Properties
-
-```bash
-GET http://localhost:3000/api/properties/search?city=Bali
-```
-
-### Test 5: Get Property Detail
-
-```bash
-GET http://localhost:3000/api/properties/<property-id>
-```
-
-## 🔍 Step 8: View Database (Optional)
-
-### Prisma Studio
-
-Prisma Studio adalah GUI untuk melihat dan mengedit data:
-
-```bash
-npm run db:studio
-```
-
-Akan membuka browser di: **http://localhost:5555**
-
-Di sini Anda bisa:
-- ✅ Lihat semua tabel dan data
-- ✅ Edit data langsung
-- ✅ Tambah data baru
-- ✅ Hapus data
-
-## 🔄 Reset Database
-
-Jika ingin reset database dan isi ulang dengan data dummy:
-
-```bash
-npm run db:reset
-```
-
-Atau manual:
-
-```bash
-npx prisma db push --force-reset
-npm run db:seed
-```
-
-## 📊 Database Commands Cheat Sheet
+### 3. Database Setup
 
 ```bash
 # Generate Prisma Client
 npx prisma generate
 
 # Push schema ke database
-npm run db:push
-# atau
 npx prisma db push
 
-# Seed database
+# (Optional) Seed database
 npm run db:seed
+```
 
-# Reset dan seed ulang
-npm run db:reset
+### 4. Create Upload Directories
 
-# Buka Prisma Studio
-npm run db:studio
+```bash
+mkdir -p uploads/properties
+mkdir -p uploads/payments
+```
 
-# Migrate database (production)
-npx prisma migrate dev --name init
+### 5. Run Development Server
+
+```bash
+npm run dev
+```
+
+Server akan berjalan di `http://localhost:3000`
+
+## 🔧 Setup Email (Gmail)
+
+### 1. Enable 2-Factor Authentication
+- Buka Google Account Settings
+- Security → 2-Step Verification → Enable
+
+### 2. Generate App Password
+- Security → App passwords
+- Select app: Mail
+- Select device: Other (Custom name)
+- Copy generated password ke `SMTP_PASS`
+
+## ⏰ Setup Cron Jobs (Production)
+
+### Auto-Cancel Expired Bookings
+
+**Frequency:** Setiap 10 menit
+
+**Endpoint:** `GET /api/cron/cancel-expired-bookings`
+
+**Header:** `Authorization: Bearer YOUR_CRON_SECRET`
+
+**Setup di Vercel:**
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/cancel-expired-bookings",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
+```
+
+### H-1 Check-in Reminders
+
+**Frequency:** Setiap hari jam 9 pagi
+
+**Endpoint:** `GET /api/cron/send-checkin-reminders`
+
+**Header:** `Authorization: Bearer YOUR_CRON_SECRET`
+
+**Setup di Vercel:**
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-checkin-reminders",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
+```
+
+## 📊 Database Schema
+
+```
+User ─┬─ Tenant ── Property ─┬─ Room ── Booking
+      │                      └─ PriceRule
+      └─ Booking ── Review
+```
+
+## 🧪 Testing
+
+```bash
+# Check database connection
+npx prisma studio
+
+# Test API endpoints
+curl http://localhost:3000/api/auth/register -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","name":"Test User","role":"USER"}'
 ```
 
 ## 🐛 Troubleshooting
 
-### Error: Can't reach database server
-
-**Solusi:**
-1. Pastikan Docker Desktop running
-2. Cek container: `docker ps`
-3. Restart container: `docker-compose restart`
-4. Cek logs: `docker-compose logs`
-
-### Error: P1001 - Connection refused
-
-**Solusi:**
-1. Pastikan PostgreSQL container running
-2. Cek port 5432 tidak digunakan aplikasi lain
-3. Restart Docker Desktop
-
-### Error: Table does not exist
-
-**Solusi:**
+### Port Already in Use
 ```bash
-npx prisma generate
-npx prisma db push
+# Kill process on port 3000
+npx kill-port 3000
 ```
 
-### Error saat seed: Cannot find module
-
-**Solusi:**
+### Prisma Client Not Generated
 ```bash
-npm install
 npx prisma generate
 ```
 
-## 🎯 Testing dengan Postman/Thunder Client
+### Database Connection Error
+1. Pastikan PostgreSQL running
+2. Check DATABASE_URL di .env.local
+3. Test connection: `npx prisma db pull`
 
-### Import Collection
+### Email Not Sending
+1. Check SMTP credentials
+2. Verify Gmail App Password
+3. Check firewall/network
 
-Anda bisa menggunakan tools seperti:
-- Postman
-- Thunder Client (VS Code extension)
-- Insomnia
+## 📦 Production Deployment
 
-### Authentication Flow
+### Vercel
 
-1. **Register/Login** → Dapat token
-2. **Simpan token** di environment variable
-3. **Gunakan token** di header semua request yang memerlukan auth:
-   ```
-   Authorization: Bearer <your-token>
-   ```
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-## 📝 Struktur Data
+# Deploy
+vercel
 
-### User Roles
-- `USER`: Customer yang bisa booking
-- `TENANT`: Pemilik property
-- `ADMIN`: Administrator (belum diimplementasi)
+# Set environment variables di Vercel dashboard
+```
 
-### Booking Status Flow
-1. `PENDING_PAYMENT` → User buat booking
-2. `PAYMENT_CONFIRMED` → User upload bukti bayar
-3. `CONFIRMED` → Tenant konfirmasi
-4. `COMPLETED` → Selesai check-out
-5. `CANCELLED` → Dibatalkan
+### Environment Variables (Production)
 
-## 🎉 Selesai!
+⚠️ **PENTING:** Set di Vercel dashboard:
+- `DATABASE_URL`
+- `JWT_SECRET` (WAJIB diganti!)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
+- `NEXT_PUBLIC_APP_URL`
+- `CRON_SECRET`
 
-Backend Anda sekarang sudah siap dengan:
-- ✅ Database running
-- ✅ Schema di-apply
-- ✅ Data dummy terisi
-- ✅ API ready to use
+## 📝 API Documentation
 
-## 🔗 Useful Links
+Lihat README.md untuk dokumentasi lengkap semua endpoint.
 
-- **Prisma Docs**: https://www.prisma.io/docs
-- **Next.js API Routes**: https://nextjs.org/docs/api-routes/introduction
-- **Docker Compose**: https://docs.docker.com/compose/
+### Key Endpoints:
 
-## 📧 Support
+**Authentication:**
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
-Jika ada masalah, cek:
-1. Docker logs: `docker-compose logs`
-2. Application logs di terminal
-3. Prisma Studio untuk cek data: `npm run db:studio`
+**User:**
+- `GET /api/user/bookings` (with pagination)
+- `POST /api/bookings`
+- `POST /api/bookings/payment-proof`
+- `POST /api/bookings/[id]/cancel`
 
----
+**Tenant:**
+- `GET /api/tenant/bookings` (with pagination)
+- `POST /api/tenant/bookings/[id]/confirm`
+- `POST /api/tenant/bookings/[id]/reject`
+- `GET /api/tenant/reports`
 
-**Happy Coding! 🚀**
+## 🔐 Security Checklist
 
+- [ ] JWT_SECRET diganti (minimal 32 karakter)
+- [ ] CRON_SECRET diset
+- [ ] Database credentials aman
+- [ ] SMTP credentials aman
+- [ ] CORS configured correctly
+- [ ] Rate limiting enabled (production)
+
+## 💡 Tips
+
+1. **Development:** Gunakan `npm run dev` dengan hot reload
+2. **Database:** Gunakan `npx prisma studio` untuk GUI
+3. **Logs:** Check console untuk errors
+4. **Testing:** Test pagination dengan `?page=1&limit=10`
+
+## 📞 Support
+
+Jika ada masalah, check:
+1. Logs di terminal
+2. Prisma Studio untuk data
+3. Browser console untuk client errors
+4. README.md untuk dokumentasi API

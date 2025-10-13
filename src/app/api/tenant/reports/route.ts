@@ -4,125 +4,116 @@ import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
     const token = request.cookies.get('auth-token')?.value
     if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = verifyToken(token)
     if (!user || user.role !== 'TENANT') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-
-    // Get tenant info
-    const tenant = await prisma.tenant.findUnique({
-      where: { userId: user.id }
-    })
-
+    const tenant = await getTenant(user.id)
+    
     if (!tenant) {
-      return NextResponse.json(
-        { error: 'Tenant not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
-    // Build date filter
-    const dateFilter: any = {}
-    if (startDate) {
-      dateFilter.gte = new Date(startDate)
-    }
-    if (endDate) {
-      dateFilter.lte = new Date(endDate)
-    }
+    const dateFilter = buildDateFilter(searchParams)
+    const bookings = await getBookingsForReport(tenant.id, dateFilter)
+    
+    const report = generateReport(bookings)
 
-    // Get bookings for the date range
-    const bookings = await prisma.booking.findMany({
-      where: {
-        property: { tenantId: tenant.id },
-        status: { in: ['CONFIRMED', 'COMPLETED'] },
-        ...(Object.keys(dateFilter).length > 0 && {
-          createdAt: dateFilter
-        })
-      },
-      include: {
-        property: {
-          select: {
-            name: true
-          }
-        }
-      }
-    })
-
-    // Calculate stats
-    const totalRevenue = bookings.reduce((sum, booking) => sum + Number(booking.totalPrice), 0)
-    const totalBookings = bookings.length
-    const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0
-
-    // Monthly revenue
-    const monthlyRevenue = bookings.reduce((acc, booking) => {
-      const month = booking.createdAt.toISOString().slice(0, 7) // YYYY-MM
-      const existing = acc.find(item => item.month === month)
-      if (existing) {
-        existing.revenue += Number(booking.totalPrice)
-      } else {
-        acc.push({
-          month,
-          revenue: Number(booking.totalPrice)
-        })
-      }
-      return acc
-    }, [] as { month: string; revenue: number }[])
-
-    // Top properties
-    const propertyStats = bookings.reduce((acc, booking) => {
-      const propertyName = booking.property.name
-      const existing = acc.find(item => item.name === propertyName)
-      if (existing) {
-        existing.revenue += Number(booking.totalPrice)
-        existing.bookings += 1
-      } else {
-        acc.push({
-          name: propertyName,
-          revenue: Number(booking.totalPrice),
-          bookings: 1
-        })
-      }
-      return acc
-    }, [] as { name: string; revenue: number; bookings: number }[])
-
-    const topProperties = propertyStats
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
-
-    const report = {
-      totalRevenue,
-      totalBookings,
-      averageBookingValue,
-      monthlyRevenue: monthlyRevenue.sort((a, b) => a.month.localeCompare(b.month)),
-      topProperties
-    }
-
-    return NextResponse.json({
-      report
-    })
+    return NextResponse.json({ report })
 
   } catch (error) {
-    console.error('Get tenant reports error:', error)
-    return NextResponse.json(
-      { error: 'Terjadi kesalahan server' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
   }
+}
+
+async function getTenant(userId: string) {
+  return prisma.tenant.findUnique({ where: { userId } })
+}
+
+function buildDateFilter(searchParams: URLSearchParams) {
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
+  const filter: any = {}
+  
+  if (startDate) filter.gte = new Date(startDate)
+  if (endDate) filter.lte = new Date(endDate)
+  
+  return filter
+}
+
+async function getBookingsForReport(tenantId: string, dateFilter: any) {
+  return prisma.booking.findMany({
+    where: {
+      property: { tenantId },
+      status: { in: ['CONFIRMED', 'COMPLETED'] },
+      ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
+    },
+    include: {
+      property: { select: { name: true } },
+      user: { select: { name: true, email: true } }
+    }
+  })
+}
+
+function generateReport(bookings: any[]) {
+  const totalRevenue = calculateTotalRevenue(bookings)
+  const totalBookings = bookings.length
+  const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0
+
+  return {
+    totalRevenue,
+    totalBookings,
+    averageBookingValue,
+    monthlyRevenue: calculateMonthlyRevenue(bookings),
+    topProperties: getTopProperties(bookings)
+  }
+}
+
+function calculateTotalRevenue(bookings: any[]): number {
+  return bookings.reduce((sum, b) => sum + Number(b.totalPrice), 0)
+}
+
+function calculateMonthlyRevenue(bookings: any[]) {
+  const monthly = bookings.reduce((acc, booking) => {
+    const month = booking.createdAt.toISOString().slice(0, 7)
+    const existing = acc.find(item => item.month === month)
+    
+    if (existing) {
+      existing.revenue += Number(booking.totalPrice)
+    } else {
+      acc.push({ month, revenue: Number(booking.totalPrice) })
+    }
+    return acc
+  }, [] as { month: string; revenue: number }[])
+
+  return monthly.sort((a, b) => a.month.localeCompare(b.month))
+}
+
+function getTopProperties(bookings: any[]) {
+  const stats = bookings.reduce((acc, booking) => {
+    const name = booking.property.name
+    const existing = acc.find(item => item.name === name)
+    
+    if (existing) {
+      existing.revenue += Number(booking.totalPrice)
+      existing.bookings += 1
+    } else {
+      acc.push({
+        name,
+        revenue: Number(booking.totalPrice),
+        bookings: 1
+      })
+    }
+    return acc
+  }, [] as { name: string; revenue: number; bookings: number }[])
+
+  return stats.sort((a, b) => b.revenue - a.revenue).slice(0, 5)
 }
 

@@ -35,16 +35,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file
-    if (file.size > 1024 * 1024) { // 1MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+    const maxSize = 1024 * 1024 // 1MB
+
+    if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'Ukuran file terlalu besar (maksimal 1MB)' },
         { status: 400 }
       )
     }
 
-    if (!file.type.startsWith('image/')) {
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'File harus berupa gambar' },
+        { error: 'Format file harus JPG atau PNG' },
+        { status: 400 }
+      )
+    }
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    if (!['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
+      return NextResponse.json(
+        { error: 'Ekstensi file tidak valid' },
         { status: 400 }
       )
     }
