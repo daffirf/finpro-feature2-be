@@ -14,8 +14,16 @@ export async function POST(
     }
 
     const user = verifyToken(token)
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (!user || user.role !== 'TENANT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { userId: user.id }
+    })
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
 
     const { id } = await params
@@ -25,22 +33,16 @@ export async function POST(
     const booking = await prisma.booking.findUnique({
       where: { id },
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true
+        property: {
+          include: {
+            tenant: true
           }
         },
-        property: {
-          select: {
-            name: true,
-            address: true
-          }
+        user: {
+          select: { name: true, email: true }
         },
         room: {
-          select: {
-            name: true
-          }
+          select: { name: true }
         }
       }
     })
@@ -52,14 +54,14 @@ export async function POST(
       )
     }
 
-    if (booking.userId !== user.id) {
+    if (booking.property.tenant.userId !== user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // User hanya bisa cancel sebelum upload bukti bayar
+    // Tenant hanya bisa cancel jika bukti bayar belum diupload
     if (booking.status !== 'PENDING_PAYMENT') {
       return NextResponse.json(
-        { error: 'Pemesanan hanya dapat dibatalkan sebelum upload bukti pembayaran' },
+        { error: 'Pemesanan hanya dapat dibatalkan sebelum user upload bukti pembayaran' },
         { status: 400 }
       )
     }
@@ -69,7 +71,12 @@ export async function POST(
       data: { status: 'CANCELLED' }
     })
 
-    await sendBookingCancellation(booking, reason)
+    // Send cancellation email to user
+    try {
+      await sendBookingCancellation(booking, reason)
+    } catch (emailError) {
+      // Log but don't fail the request
+    }
 
     return NextResponse.json({
       booking: updatedBooking,

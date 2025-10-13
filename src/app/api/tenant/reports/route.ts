@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const dateFilter = buildDateFilter(searchParams)
-    const bookings = await getBookingsForReport(tenant.id, dateFilter)
+    const bookings = await getBookingsForReport(tenant.id, dateFilter, searchParams)
     
     const report = generateReport(bookings)
 
@@ -48,17 +48,52 @@ function buildDateFilter(searchParams: URLSearchParams) {
   return filter
 }
 
-async function getBookingsForReport(tenantId: string, dateFilter: any) {
+async function getBookingsForReport(tenantId: string, dateFilter: any, searchParams: URLSearchParams) {
+  const propertyId = searchParams.get('propertyId')
+  const userId = searchParams.get('userId')
+  const transactionStatus = searchParams.get('transactionStatus')
+  const sortBy = searchParams.get('sortBy') || 'createdAt'
+  const sortOrder = searchParams.get('sortOrder') || 'desc'
+
+  const where: any = {
+    property: { tenantId },
+    status: { in: ['CONFIRMED', 'COMPLETED'] }
+  }
+
+  // Filter by property
+  if (propertyId) {
+    where.propertyId = propertyId
+  }
+
+  // Filter by user
+  if (userId) {
+    where.userId = userId
+  }
+
+  // Filter by transaction status
+  if (transactionStatus) {
+    where.status = transactionStatus
+  }
+
+  // Filter by date
+  if (Object.keys(dateFilter).length > 0) {
+    where.createdAt = dateFilter
+  }
+
+  const orderBy: any = {}
+  if (sortBy === 'totalPrice') {
+    orderBy.totalPrice = sortOrder
+  } else {
+    orderBy[sortBy] = sortOrder
+  }
+
   return prisma.booking.findMany({
-    where: {
-      property: { tenantId },
-      status: { in: ['CONFIRMED', 'COMPLETED'] },
-      ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
-    },
+    where,
     include: {
       property: { select: { name: true } },
       user: { select: { name: true, email: true } }
-    }
+    },
+    orderBy
   })
 }
 

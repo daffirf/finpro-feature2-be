@@ -74,11 +74,12 @@ export async function POST(
     const body = await request.json()
     const { reason } = body
 
-    // Update booking status
+    // Update booking status - kembali ke PENDING_PAYMENT
     const updatedBooking = await prisma.booking.update({
       where: { id: id },
       data: {
-        status: 'CANCELLED'
+        status: 'PENDING_PAYMENT',
+        paymentProof: null
       },
       include: {
         user: {
@@ -103,7 +104,7 @@ export async function POST(
 
     return NextResponse.json({
       booking: updatedBooking,
-      message: 'Pembayaran ditolak, booking dibatalkan'
+      message: 'Pembayaran ditolak, status dikembalikan ke menunggu pembayaran'
     })
 
   } catch (error) {

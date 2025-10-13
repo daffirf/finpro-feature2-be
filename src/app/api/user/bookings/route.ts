@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const checkInStart = searchParams.get('checkInStart')
+    const checkInEnd = searchParams.get('checkInEnd')
+    const checkOutStart = searchParams.get('checkOutStart')
+    const checkOutEnd = searchParams.get('checkOutEnd')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -38,6 +42,20 @@ export async function GET(request: NextRequest) {
         { id: { contains: search, mode: 'insensitive' } },
         { property: { name: { contains: search, mode: 'insensitive' } } }
       ]
+    }
+
+    // Filter by check-in date range
+    if (checkInStart || checkInEnd) {
+      where.checkIn = {}
+      if (checkInStart) where.checkIn.gte = new Date(checkInStart)
+      if (checkInEnd) where.checkIn.lte = new Date(checkInEnd)
+    }
+
+    // Filter by check-out date range
+    if (checkOutStart || checkOutEnd) {
+      where.checkOut = {}
+      if (checkOutStart) where.checkOut.gte = new Date(checkOutStart)
+      if (checkOutEnd) where.checkOut.lte = new Date(checkOutEnd)
     }
 
     const orderBy: any = {}
