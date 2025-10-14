@@ -20,7 +20,16 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 }
 
 export function generateToken(user: AuthUser): string {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' })
+  return jwt.sign(
+    { 
+      id: user.id, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role 
+    }, 
+    JWT_SECRET, 
+    { expiresIn: '2h' }
+  )
 }
 
 export function verifyToken(token: string): AuthUser | null {

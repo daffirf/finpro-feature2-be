@@ -1,0 +1,100 @@
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to Property Rent</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f8fafc;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        background: #ffffff;
+        margin: 40px auto;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 2px solid #00a8a8;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      .header h2 {
+        color: #00a8a8;
+        margin: 0;
+      }
+      .content p {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .highlight {
+        color: #00a8a8;
+        font-weight: bold;
+      }
+      .button {
+        display: inline-block;
+        background-color: #00a8a8;
+        color: #ffffff !important;
+        text-decoration: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: bold;
+        margin-top: 20px;
+      }
+      .footer {
+        text-align: center;
+        font-size: 13px;
+        color: #666;
+        margin-top: 30px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+      }
+      .footer a {
+        color: #00a8a8;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Welcome to Property Rent!</h2>
+      </div>
+
+      <div class="content">
+        <p>Hi, <span class="highlight">{{email}}</span> 👋</p>
+
+        <p>
+          We're thrilled to have you join <strong>Property Rent</strong> — your go-to
+          platform for finding and booking <strong>hotels, villas, and unique stays</strong>
+          around Indonesia and beyond.
+        </p>
+
+        <p>
+          Start your journey today by exploring thousands of places to stay,
+          tailored just for your comfort and convenience.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="{{loginUrl}}" class="button">Explore Now</a>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>
+          Need help? Visit our <a href="{{supportUrl}}">Help Center</a> or contact
+          <a href="mailto:support@propertyrent.com">support@propertyrent.com</a>.
+        </p>
+        <p>© {{year}} Property Rent. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>
