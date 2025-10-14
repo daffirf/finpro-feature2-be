@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.0] - Requirements Compliance Update
+
+### ✅ Fixed Critical Issues
+- **Cancel Order Logic** - User hanya bisa cancel sebelum upload bukti bayar (PENDING_PAYMENT only)
+- **Reject Payment Logic** - Status kembali ke PENDING_PAYMENT, bukan CANCELLED
+- **Reject Payment** - Payment proof dihapus saat ditolak
+
+### ✅ Added Missing Endpoints
+- **POST /api/tenant/bookings/[id]/cancel** - Tenant cancel user order
+- **GET /api/tenant/properties/[id]/calendar** - Property availability calendar (per property)
+- **GET /api/tenant/properties/calendar** - All properties calendar summary
+
+### ✅ Enhanced Features
+- **User Bookings** - Added date range filters (checkInStart, checkInEnd, checkOutStart, checkOutEnd)
+- **Sales Report** - Added filters by propertyId, userId, transactionStatus
+- **Sales Report** - Added sort by totalPrice
+
+### 📊 Requirements Compliance
+- User Transaction Process: 100% ✅
+- Tenant Transaction Management: 100% ✅
+- Review Feature: 100% ✅
+- Report & Analysis: 100% ✅
+
+---
+
 ## [1.1.0] - Refactored & Optimized
 
 ### ✅ Added

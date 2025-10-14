@@ -174,6 +174,28 @@ User ─┬─ Tenant ── Property ── Room
 
 ## 📡 API Endpoints
 
+### Query Parameters
+
+**User Bookings:**
+- `status` - Filter by booking status
+- `search` - Search by ID or property name
+- `checkInStart`, `checkInEnd` - Filter by check-in date range
+- `checkOutStart`, `checkOutEnd` - Filter by check-out date range
+- `sortBy`, `sortOrder` - Sort bookings
+- `page`, `limit` - Pagination
+
+**Tenant Reports:**
+- `startDate`, `endDate` - Date range filter
+- `propertyId` - Filter by specific property
+- `userId` - Filter by specific user
+- `transactionStatus` - Filter by transaction status
+- `sortBy` - Sort by (createdAt, totalPrice)
+- `sortOrder` - Sort order (asc, desc)
+
+**Property Calendar:**
+- `month` - Format: YYYY-MM (e.g., 2025-01)
+- `year` - Format: YYYY (e.g., 2025)
+
 ### Authentication
 
 | Method | Endpoint | Description | Auth |
@@ -219,8 +241,11 @@ User ─┬─ Tenant ── Property ── Room
 | GET | `/api/tenant/bookings` | List bookings | ✅ TENANT |
 | POST | `/api/tenant/bookings/[id]/confirm` | Confirm booking | ✅ TENANT |
 | POST | `/api/tenant/bookings/[id]/reject` | Reject booking | ✅ TENANT |
+| POST | `/api/tenant/bookings/[id]/cancel` | Cancel user booking | ✅ TENANT |
 | GET | `/api/tenant/reports` | Sales reports | ✅ TENANT |
 | POST | `/api/tenant/price-rules` | Create price rule | ✅ TENANT |
+| GET | `/api/tenant/properties/[id]/calendar` | Property calendar | ✅ TENANT |
+| GET | `/api/tenant/properties/calendar` | All properties calendar | ✅ TENANT |
 
 ### Reviews
 
