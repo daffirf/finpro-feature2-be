@@ -10,7 +10,6 @@ import { RoomRouter } from "./modules/room/room.router";
 import { TenantRouter } from "./modules/tenant/tenant.router";
 import { UserRouter } from "./modules/user/user.router";
 import { CronRouter } from "./modules/cron/cron.router";
-import { UploadRouter } from "./modules/upload/upload.router";
 import { CronService } from "./services/cron.service";
 
 export class App {
@@ -29,7 +28,7 @@ export class App {
     this.app.use(cors({
       origin: process.env.NODE_ENV === 'production' 
         ? ['https://your-frontend-domain.com'] 
-        : ['http://localhost:3000', 'http://localhost:3001'],
+        : true, // Allow all origins in development
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -47,7 +46,6 @@ export class App {
     const tenantRouter = new TenantRouter();
     const userRouter = new UserRouter();
     const cronRouter = new CronRouter();
-    const uploadRouter = new UploadRouter();
 
     // API routes
     this.app.use("/api/auth", authRouter.getRouter());
@@ -60,10 +58,24 @@ export class App {
     this.app.use("/api/cron", cronRouter.getRouter());
     
     // Upload routes for serving static files
-    this.app.use("/uploads", uploadRouter.getRouter());
+    this.app.use("/uploads", express.static('uploads'));
 
     // Legacy auth routes (for backward compatibility)
     this.app.use("/auth", authRouter.getRouter());
+
+    // Root route for testing
+    this.app.get("/", (req, res) => {
+      res.json({ 
+        message: "Express API Server is running!", 
+        version: "1.0.0",
+        endpoints: {
+          auth: "/api/auth/*",
+          bookings: "/api/bookings/*",
+          properties: "/api/properties/*",
+          uploads: "/uploads/*"
+        }
+      });
+    });
   }
 
   private handleError() {

@@ -45,7 +45,7 @@ export class PropertyController {
 
   getPropertyById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params
+      const id = parseInt(req.params.id)
       const result = await this.propertyService.getPropertyById(id)
       res.status(200).json(result)
     } catch (error) {
@@ -55,13 +55,14 @@ export class PropertyController {
 
   getPropertyPrices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params
-      const { roomId, month } = req.query
+      const id = parseInt(req.params.id)
+      const roomId = parseInt(req.query.roomId as string)
+      const month = req.query.month as string
       
       const result = await this.propertyService.getPropertyPrices(
         id,
-        roomId as string,
-        month as string
+        roomId,
+        month
       )
       res.status(200).json(result)
     } catch (error) {

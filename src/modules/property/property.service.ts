@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { ApiError } from '@/lib/errors'
 import { getPaginationParams, getPaginationMeta, createPaginatedResponse } from '@/lib/pagination'
+import { BookingStatus } from '@/generated/prisma'
 
 export interface PropertySearchParams {
   city?: string
@@ -40,7 +41,10 @@ export class PropertyService {
         where,
         include: {
           rooms: {
-            where: { capacity: { gte: guests }, isActive: true },
+            where: { 
+              capacity: { gte: guests },
+              deletedAt: null
+            },
             select: { id: true, name: true, capacity: true, basePrice: true }
           },
           reviews: { select: { rating: true } },
@@ -72,16 +76,15 @@ export class PropertyService {
     return createPaginatedResponse(availableProperties, meta)
   }
 
-  async getPropertyById(id: string) {
+  async getPropertyById(id: number) {
     const property = await prisma.property.findUnique({
       where: {
-        id: id,
-        isActive: true
+        id: id
       },
       include: {
         rooms: {
           where: {
-            isActive: true
+            deletedAt: null
           },
           select: {
             id: true,
@@ -119,7 +122,7 @@ export class PropertyService {
     return { property }
   }
 
-  async getPropertyPrices(propertyId: string, roomId: string, month: string) {
+  async getPropertyPrices(propertyId: number, roomId: number, month: string) {
     if (!roomId || !month) {
       throw new ApiError(400, 'Parameter roomId dan month diperlukan')
     }
@@ -137,49 +140,15 @@ export class PropertyService {
       throw new ApiError(404, 'Kamar tidak ditemukan')
     }
 
-    // Get price rules for the property
-    const priceRules = await prisma.priceRule.findMany({
-      where: {
-        propertyId,
-        isActive: true,
-        OR: [
-          {
-            startDate: {
-              lte: endDate
-            },
-            endDate: {
-              gte: startDate
-            }
-          }
-        ]
-      }
-    })
-
     // Generate price data for each day in the month
+    // Note: PriceRule tidak ada di schema, jadi kita gunakan base price
     const prices = []
     const currentDate = new Date(startDate)
 
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0]
-      let price = Number(room.basePrice)
-      let isHoliday = false
-      let isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6
-
-      // Check for price rules
-      const applicableRule = priceRules.find(rule => {
-        const ruleStart = new Date(rule.startDate)
-        const ruleEnd = new Date(rule.endDate)
-        return currentDate >= ruleStart && currentDate <= ruleEnd
-      })
-
-      if (applicableRule) {
-        if (applicableRule.priceType === 'PERCENTAGE') {
-          price = price * (1 + Number(applicableRule.value) / 100)
-        } else {
-          price = Number(applicableRule.value)
-        }
-        isHoliday = true
-      }
+      const price = Number(room.basePrice)
+      const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6
 
       // Check if room is available for this date
       const isAvailable = await this.checkRoomAvailability(roomId, dateStr)
@@ -188,7 +157,6 @@ export class PropertyService {
         date: dateStr,
         price: Math.round(price),
         isAvailable,
-        isHoliday,
         isWeekend
       })
 
@@ -206,21 +174,25 @@ export class PropertyService {
     amenities: string[]
   ) {
     const where: any = {
-      isActive: true,
+      published: true,
+      deletedAt: null,
       city: { contains: city, mode: 'insensitive' },
       rooms: {
-        some: { capacity: { gte: guests }, isActive: true }
+        some: { 
+          capacity: { gte: guests },
+          deletedAt: null
+        }
       }
     }
 
+    // Note: basePrice ada di Room, bukan Property
+    // Untuk filter harga, perlu query rooms
     if (minPrice || maxPrice) {
-      where.basePrice = {}
-      if (minPrice) where.basePrice.gte = parseFloat(minPrice)
-      if (maxPrice) where.basePrice.lte = parseFloat(maxPrice)
-    }
-
-    if (amenities.length > 0) {
-      where.amenities = { hasSome: amenities }
+      const priceFilter: any = {}
+      if (minPrice) priceFilter.gte = parseFloat(minPrice)
+      if (maxPrice) priceFilter.lte = parseFloat(maxPrice)
+      
+      where.rooms.some.basePrice = priceFilter
     }
 
     return where
@@ -228,26 +200,28 @@ export class PropertyService {
 
   private getOrderByClause(sortBy: string) {
     const orderByMap: Record<string, any> = {
-      'price_asc': { basePrice: 'asc' },
-      'price_desc': { basePrice: 'desc' },
+      // Property tidak memiliki basePrice, ada di Room
+      // Untuk sementara sort by name atau createdAt
+      'price_asc': { createdAt: 'asc' },
+      'price_desc': { createdAt: 'desc' },
       'name_asc': { name: 'asc' },
-      'rating_desc': { reviews: { _count: 'desc' } }
+      'rating_desc': { createdAt: 'desc' }
     }
-    return orderByMap[sortBy] || orderByMap['price_asc']
+    return orderByMap[sortBy] || orderByMap['name_asc']
   }
 
   private async getBookedRoomIds(
-    roomIds: string[], 
+    roomIds: number[], 
     checkIn: string, 
     checkOut: string
-  ): Promise<Set<string>> {
+  ): Promise<Set<number>> {
     const startDate = new Date(checkIn)
     const endDate = new Date(checkOut)
 
-    const bookedRooms = await prisma.booking.findMany({
+    // Booking tidak memiliki roomId langsung, harus cek melalui items
+    const bookings = await prisma.booking.findMany({
       where: {
-        roomId: { in: roomIds },
-        status: { notIn: ['CANCELLED'] },
+        status: { notIn: [BookingStatus.cancelled, BookingStatus.expired, BookingStatus.rejected] },
         OR: [{
           AND: [
             { checkIn: { lt: endDate } },
@@ -255,22 +229,40 @@ export class PropertyService {
           ]
         }]
       },
-      select: { roomId: true }
+      include: {
+        items: {
+          where: {
+            roomId: { in: roomIds }
+          },
+          select: { roomId: true }
+        }
+      }
     })
 
-    return new Set(bookedRooms.map(b => b.roomId))
+    const bookedRoomIds = new Set<number>()
+    bookings.forEach(booking => {
+      booking.items.forEach(item => {
+        bookedRoomIds.add(item.roomId)
+      })
+    })
+
+    return bookedRoomIds
   }
 
-  private async checkRoomAvailability(roomId: string, date: string): Promise<boolean> {
+  private async checkRoomAvailability(roomId: number, date: string): Promise<boolean> {
     const startDate = new Date(date)
     const endDate = new Date(date)
     endDate.setDate(endDate.getDate() + 1)
 
     const conflictingBooking = await prisma.booking.findFirst({
       where: {
-        roomId,
+        items: {
+          some: {
+            roomId
+          }
+        },
         status: {
-          not: 'CANCELLED'
+          notIn: [BookingStatus.cancelled, BookingStatus.expired, BookingStatus.rejected]
         },
         OR: [
           {

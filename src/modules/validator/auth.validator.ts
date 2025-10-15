@@ -6,7 +6,7 @@ export const validateRegister = [
     body("name").notEmpty().withMessage("Name is required").isLength({ min: 2, max: 50 }).withMessage("Name must be between 2 and 50 characters"),
     body("email").notEmpty().withMessage("Email is Required").isEmail().withMessage("Invalid email"),
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
-    body("role").optional().isIn(['USER', 'TENANT', 'ADMIN']).withMessage("Role must be USER, TENANT, or ADMIN"),
+    body("role").optional().isIn(['user', 'tenant']).withMessage("Role must be 'user' or 'tenant'"),
     body("phone").optional().isString().withMessage("Phone must be a string"),
 
     (req: Request, res: Response, next: NextFunction) => {
@@ -50,7 +50,7 @@ export const validateUpdateUser = [
     body("name").optional().isString().withMessage("Name must be a string"),
     body("email").optional().isEmail().withMessage("Invalid email"),
     body("password").optional().isString().withMessage("Password must be a string"),
-    body("role").optional().isIn(['USER', 'TENANT', 'ADMIN']).withMessage("Role must be USER, TENANT, or ADMIN"),
+    body("role").optional().isIn(['user', 'tenant']).withMessage("Role must be 'user' or 'tenant'"),
     body("phone").optional().isString().withMessage("Phone must be a string"),
     
     (req: Request, res: Response, next: NextFunction) => {

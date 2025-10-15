@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { sendBookingCancellation, sendCheckInReminder } from '@/lib/email'
+import { BookingStatus } from '@/generated/prisma'
 
 export class CronService {
   static init() {
@@ -15,7 +16,7 @@ export class CronService {
 
       const expiredBookings = await prisma.booking.findMany({
         where: {
-          status: 'PENDING_PAYMENT',
+          status: BookingStatus.pending_payment,
           createdAt: {
             lte: expiredTime
           }
@@ -23,19 +24,24 @@ export class CronService {
         include: {
           user: {
             select: {
+              id: true,
               name: true,
               email: true
             }
           },
-          property: {
-            select: {
-              name: true,
-              address: true
-            }
-          },
-          room: {
-            select: {
-              name: true
+          items: {
+            include: {
+              room: {
+                include: {
+                  property: {
+                    select: {
+                      id: true,
+                      name: true,
+                      address: true
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -44,10 +50,14 @@ export class CronService {
       for (const booking of expiredBookings) {
         await prisma.booking.update({
           where: { id: booking.id },
-          data: { status: 'CANCELLED' }
+          data: { 
+            status: BookingStatus.cancelled,
+            cancelledAt: new Date(),
+            cancelReason: 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam'
+          }
         })
 
-        await sendBookingCancellation(booking, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam')
+        await sendBookingCancellation(booking as any, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam')
       }
 
       return {
@@ -71,7 +81,7 @@ export class CronService {
 
       const upcomingBookings = await prisma.booking.findMany({
         where: {
-          status: 'PAYMENT_CONFIRMED',
+          status: BookingStatus.confirmed,
           checkIn: {
             gte: tomorrow,
             lt: dayAfterTomorrow
@@ -80,26 +90,31 @@ export class CronService {
         include: {
           user: {
             select: {
+              id: true,
               name: true,
               email: true
             }
           },
-          property: {
-            select: {
-              name: true,
-              address: true
-            }
-          },
-          room: {
-            select: {
-              name: true
+          items: {
+            include: {
+              room: {
+                include: {
+                  property: {
+                    select: {
+                      id: true,
+                      name: true,
+                      address: true
+                    }
+                  }
+                }
+              }
             }
           }
         }
       })
 
       for (const booking of upcomingBookings) {
-        await sendCheckInReminder(booking)
+        await sendCheckInReminder(booking as any)
       }
 
       return {

@@ -8,7 +8,7 @@ export class AuthRepository {
     })
   }
 
-  async findById(id: string) {
+  async findById(id: number) {
     return prisma.user.findUnique({
       where: { id },
     })
@@ -20,14 +20,14 @@ export class AuthRepository {
         email: data.email,
         name: data.name,
         password: data.password,
-        ...(data.phone && { phone: data.phone }),
-        role: data.role || 'USER',
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+        role: data.role || 'user',
       },
     })
     return user
   }
 
-  async updateUser(id: string, data: UpdateUserDTO) {
+  async updateUser(id: number, data: UpdateUserDTO) {
     return prisma.user.update({
       where: { id },
       data: {
@@ -35,19 +35,19 @@ export class AuthRepository {
         ...(data.email && { email: data.email }),
         ...(data.password && { password: data.password }),
         ...(data.role && { role: data.role }),
-        ...(data.phone && { phone: data.phone }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
       },
     })
   }
 
-  async updatePassword(id: string, hashedPassword: string) {
+  async updatePassword(id: number, hashedPassword: string) {
     return prisma.user.update({
       where: { id },
       data: { password: hashedPassword },
     })
   }
 
-  async deleteUser(id: string) {
+  async deleteUser(id: number) {
     return prisma.user.delete({
       where: { id },
     })
@@ -60,7 +60,7 @@ export class AuthRepository {
         name: true,
         email: true,
         role: true,
-        phone: true,
+        phoneNumber: true,
         createdAt: true,
         updatedAt: true,
         // Exclude password from response

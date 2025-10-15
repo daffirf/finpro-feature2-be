@@ -13,12 +13,15 @@ export class AuthService {
     this.mailService = new MailService()
   }
 
-  // Register new user with business logic
+  // Register account
   async register(data: RegisterDTO) {
+    // Set default role if not provided
+    const role = data.role || 'user'
+    
     // Check if user already exists
     const existing = await this.authRepo.findByEmail(data.email)
     if (existing) {
-      throw new ApiError(400, 'User already exists')
+      throw new ApiError(400, `${role} with this email already exists`)
     }
 
     // Hash password using centralized function
@@ -54,7 +57,7 @@ export class AuthService {
   }
 
   // Get user by ID with business logic
-  async getUserId(id: string) {
+  async getUserId(id: number) {
     if (!id) {
       throw new ApiError(400, 'User ID is required')
     }
@@ -70,7 +73,7 @@ export class AuthService {
   }
 
   // Update user with business logic
-  async updateUser(id: string, data: UpdateUserDTO) {
+  async updateUser(id: number, data: UpdateUserDTO) {
     // Validate user exists
     const existingUser = await this.authRepo.findById(id)
     if (!existingUser) {
@@ -109,12 +112,12 @@ export class AuthService {
   }
 
   // Get current user (alias for getUserId)
-  async getMe(id: string) {
+  async getMe(id: number) {
     return this.getUserId(id)
   }
 
   // Delete user with business logic
-  async deleteUser(id: string) {
+  async deleteUser(id: number) {
     const user = await this.authRepo.findById(id)
     if (!user) {
       throw new ApiError(404, 'User not found')
@@ -130,7 +133,7 @@ export class AuthService {
   }
 
   // Change password with business logic
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(userId: number, oldPassword: string, newPassword: string) {
     // Validate new password strength
     if (newPassword.length < 6) {
       throw new ApiError(400, 'Password must be at least 6 characters')
@@ -140,6 +143,10 @@ export class AuthService {
     const user = await this.authRepo.findById(userId)
     if (!user) {
       throw new ApiError(404, 'User not found')
+    }
+
+    if (!user.password) {
+      throw new ApiError(400, 'User has no password set')
     }
 
     // Verify old password using centralized function
@@ -158,7 +165,7 @@ export class AuthService {
   }
 
   // Reset password (for forgot password flow)
-  async resetPassword(userId: string, newPassword: string) {
+  async resetPassword(userId: number, newPassword: string) {
     // Validate password strength
     if (newPassword.length < 6) {
       throw new ApiError(400, 'Password must be at least 6 characters')

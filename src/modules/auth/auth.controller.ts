@@ -24,26 +24,26 @@ export class AuthController {
   };
 
   getUserById = async (req: Request, res: Response, next: NextFunction) => {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
     const result = await this.authService.getUserId(id);
     res.status(200).send(result);
   };
 
   getMe = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.params.id || (req as any).user?.userId;
+    const userId = req.params.id || (req as any).user?.id;
     const result = await this.authService.getMe(userId);
     res.status(200).send(result);
   };
 
   updateUser = async (req: Request, res: Response, next: NextFunction) => {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
     const userData = req.body;
     const result = await this.authService.updateUser(id, userData);
     res.status(200).send(result);
   };
 
   deleteUser = async (req: Request, res: Response, next: NextFunction) => {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
     const result = await this.authService.deleteUser(id);
     res.status(200).send(result);
   };

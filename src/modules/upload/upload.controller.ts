@@ -10,13 +10,15 @@ export class UploadController {
 
   getFile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Get path from request path, removing /uploads prefix
-      const requestPath = req.path.startsWith('/') ? req.path.substring(1) : req.path
-      const filePath = requestPath ? requestPath.split('/') : []
+      // Get file path from route parameters
+      const { folder, filename } = req.params
       
-      if (!filePath.length) {
+      if (!filename) {
         return res.status(400).json({ error: 'File path is required' })
       }
+
+      // Build file path array
+      const filePath = folder ? [folder, filename] : [filename]
 
       const result = await this.uploadService.getFile(filePath)
       
