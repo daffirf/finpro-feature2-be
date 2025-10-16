@@ -1,7 +1,15 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
-import { validateRegister, validateLogin, validateUpdateUser, validateChangePassword, validateResetPassword } from "@/modules/validator/auth.validator";
 import { JwtMiddleware } from "@/middlewares/jwt.middleware";
+import { validateAuth } from "@/middlewares/validate.middleware";
+import { changePasswordSchema, loginSchema, registerSchema, resetPasswordSchema, updateUserSchema } from "./validator/auth.validator";
+export type { 
+  RegisterInput as RegisterDTO,
+  LoginInput as LoginDTO,
+  UpdateUserInput as UpdateUserDTO,
+  ChangePasswordInput as ChangePasswordDTO,
+  ResetPasswordInput as ResetPasswordDTO
+} from '../auth/validator/auth.validator';
 
 export class AuthRouter {
   private router: Router;
@@ -16,21 +24,23 @@ export class AuthRouter {
   }
 
   private initializedRoutes() {
-    // Public routes
-    this.router.post("/register", validateRegister, this.authController.register);
-    this.router.post("/login", validateLogin, this.authController.login);
+    // Public routes - lihat betapa clean-nya! 🎉
+    this.router.post("/register", validateAuth(registerSchema), this.authController.register);
+    this.router.post("/login", validateAuth(loginSchema), this.authController.login);
     this.router.post("/logout", this.authController.logout);
     
-    // Protected routes (require authentication)
-    this.router.get("/users", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), this.authController.getAllUsers);
-    this.router.get("/profile/:id", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), this.authController.getUserById);
-    this.router.get("/me", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), this.authController.getMe);
+    // Protected routes
+    const auth = this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!);
     
-    this.router.patch("/update/:id", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), validateUpdateUser, this.authController.updateUser);
-    this.router.delete("/delete/:id", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), this.authController.deleteUser);
+    this.router.get("/users", auth, this.authController.getAllUsers);
+    this.router.get("/profile/:id", auth, this.authController.getUserById);
+    this.router.get("/me", auth, this.authController.getMe);
     
-    this.router.patch("/change-password/:id", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), validateChangePassword, this.authController.changePassword);
-    this.router.patch("/reset-password/:id", this.jwtMiddleware.verifyToken(process.env.JWT_SECRET!), validateResetPassword, this.authController.resetPassword);
+    this.router.patch("/update/:id", auth, validateAuth(updateUserSchema), this.authController.updateUser);
+    this.router.delete("/delete/:id", auth, this.authController.deleteUser);
+    
+    this.router.patch("/change-password/:id", auth, validateAuth(changePasswordSchema), this.authController.changePassword);
+    this.router.patch("/reset-password/:id", auth, validateAuth(resetPasswordSchema), this.authController.resetPassword);
   }
 
   getRouter = () => {
