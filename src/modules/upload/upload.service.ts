@@ -1,6 +1,6 @@
 import { readFile, access } from 'fs/promises'
 import { join } from 'path'
-import { ApiError } from '@/lib/errors'
+import { ApiError } from '@/utils/api-error'
 
 export class UploadService {
   

@@ -9,6 +9,7 @@ import { ReviewRouter } from "./modules/review/review.router";
 import { RoomRouter } from "./modules/room/room.router";
 import { TenantRouter } from "./modules/tenant/tenant.router";
 import { UserRouter } from "./modules/user/user.router";
+import { UploadRouter } from "./modules/upload/upload.router";
 import { CronRouter } from "./modules/cron/cron.router";
 import { CronService } from "./services/cron.service";
 
@@ -45,6 +46,7 @@ export class App {
     const roomRouter = new RoomRouter();
     const tenantRouter = new TenantRouter();
     const userRouter = new UserRouter();
+    const uploadRouter = new UploadRouter();
     const cronRouter = new CronRouter();
 
     // API routes
@@ -55,10 +57,8 @@ export class App {
     this.app.use("/api/rooms", roomRouter.getRouter());
     this.app.use("/api/tenant", tenantRouter.getRouter());
     this.app.use("/api/user", userRouter.getRouter());
+    this.app.use("/api/uploads", uploadRouter.getRouter());
     this.app.use("/api/cron", cronRouter.getRouter());
-    
-    // Upload routes for serving static files
-    this.app.use("/uploads", express.static('uploads'));
 
     // Legacy auth routes (for backward compatibility)
     this.app.use("/auth", authRouter.getRouter());
@@ -72,7 +72,13 @@ export class App {
           auth: "/api/auth/*",
           bookings: "/api/bookings/*",
           properties: "/api/properties/*",
-          uploads: "/uploads/*"
+          reviews: "/api/reviews/*",
+          rooms: "/api/rooms/*",
+          tenant: "/api/tenant/*",
+          user: "/api/user/*",
+          uploads: "/api/uploads/*",
+          cron: "/api/cron/*",
+          legacy_auth: "/auth/*"
         }
       });
     });
@@ -85,7 +91,6 @@ export class App {
   public start() {
     this.app.listen(PORT, () => {
       console.log(`Server running on port: ${PORT}`);
-      console.log("✅ Cron jobs initialized");
     });
   }
 }

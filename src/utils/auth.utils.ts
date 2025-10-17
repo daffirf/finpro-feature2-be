@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { prisma } from './prisma'
+import { prisma } from './database'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -56,3 +56,4 @@ export async function authenticateUser(email: string, password: string): Promise
     role: user.role
   }
 }
+

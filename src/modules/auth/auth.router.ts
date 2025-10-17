@@ -24,7 +24,7 @@ export class AuthRouter {
   }
 
   private initializedRoutes() {
-    // Public routes - lihat betapa clean-nya! 🎉
+    // Public routes
     this.router.post("/register", validateAuth(registerSchema), this.authController.register);
     this.router.post("/login", validateAuth(loginSchema), this.authController.login);
     this.router.post("/logout", this.authController.logout);

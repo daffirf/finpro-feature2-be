@@ -77,3 +77,4 @@ export function validateFile(file: File, maxSize: number = 1024 * 1024, allowedT
   
   return { valid: true }
 }
+

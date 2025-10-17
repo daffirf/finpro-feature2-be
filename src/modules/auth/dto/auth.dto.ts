@@ -2,8 +2,8 @@ export interface RegisterDTO {
     name: string
     email: string
     password: string
-    role?: 'user' | 'tenant'  // Optional, default to user
-    phoneNumber?: string  // Optional phone number
+    role?: 'user' | 'tenant'  
+    phoneNumber?: string  
 }
 
 export interface LoginDTO {

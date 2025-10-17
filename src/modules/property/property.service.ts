@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma'
-import { ApiError } from '@/lib/errors'
-import { getPaginationParams, getPaginationMeta, createPaginatedResponse } from '@/lib/pagination'
+import { prisma } from '@/utils/database'
+import { ApiError } from '@/utils/api-error'
+import { getPaginationParams, getPaginationMeta, createPaginatedResponse } from '@/utils/pagination.utils'
 import { BookingStatus } from '@/generated/prisma'
 
 export interface PropertySearchParams {

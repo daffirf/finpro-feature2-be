@@ -1,11 +1,11 @@
-import { prisma } from '@/lib/prisma'
-import { ApiError } from '@/lib/errors'
+import { prisma } from '@/utils/database'
+import { ApiError } from '@/utils/api-error'
 import { 
   checkRoomAvailability, 
-  validateBookingDates,
-  calculateNights
-} from '@/lib/booking-utils'
-import { sendBookingCancellation } from '@/lib/email'
+  validateBookingDates
+} from '@/utils/booking.utils'
+import { calculateNights } from '@/utils/date.utils'
+import { sendBookingCancellation } from '@/utils/email.utils'
 import { BookingStatus } from '@/generated/prisma'
 
 export interface CreateBookingDTO {
