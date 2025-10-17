@@ -16,7 +16,6 @@ const room_router_1 = require("./modules/room/room.router");
 const tenant_router_1 = require("./modules/tenant/tenant.router");
 const user_router_1 = require("./modules/user/user.router");
 const cron_router_1 = require("./modules/cron/cron.router");
-const upload_router_1 = require("./modules/upload/upload.router");
 const cron_service_1 = require("./services/cron.service");
 class App {
     constructor() {
@@ -47,7 +46,6 @@ class App {
         const tenantRouter = new tenant_router_1.TenantRouter();
         const userRouter = new user_router_1.UserRouter();
         const cronRouter = new cron_router_1.CronRouter();
-        const uploadRouter = new upload_router_1.UploadRouter();
         // API routes
         this.app.use("/api/auth", authRouter.getRouter());
         this.app.use("/api/bookings", bookingRouter.getRouter());
@@ -58,7 +56,7 @@ class App {
         this.app.use("/api/user", userRouter.getRouter());
         this.app.use("/api/cron", cronRouter.getRouter());
         // Upload routes for serving static files
-        this.app.use("/uploads", uploadRouter.getRouter());
+        this.app.use("/uploads", express_1.default.static('uploads'));
         // Legacy auth routes (for backward compatibility)
         this.app.use("/auth", authRouter.getRouter());
     }

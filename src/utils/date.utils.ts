@@ -1,13 +1,6 @@
-// Utility functions for the application
-
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+/**
+ * Date utility functions
+ */
 
 export function formatDate(date: Date | string): string {
   return new Intl.DateTimeFormat('id-ID', {
@@ -34,6 +27,14 @@ export function calculateDaysBetween(startDate: Date | string, endDate: Date | s
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 
+export function calculateNights(checkIn: Date | string, checkOut: Date | string): number {
+  const startDate = new Date(checkIn)
+  const endDate = new Date(checkOut)
+  return Math.ceil(
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  )
+}
+
 export function isDateInRange(date: Date | string, startDate: Date | string, endDate: Date | string): boolean {
   const checkDate = new Date(date)
   const start = new Date(startDate)
@@ -41,16 +42,22 @@ export function isDateInRange(date: Date | string, startDate: Date | string, end
   return checkDate >= start && checkDate <= end
 }
 
-export function generateBookingNumber(): string {
-  const timestamp = Date.now().toString()
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
-  return `BK${timestamp.slice(-6)}${random}`
+export function isDateInPast(date: Date | string): boolean {
+  const checkDate = new Date(date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return checkDate < today
 }
 
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+export function addDays(date: Date | string, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
 }
+
+export function setTimeToMidnight(date: Date): Date {
+  const result = new Date(date)
+  result.setHours(0, 0, 0, 0)
+  return result
+}
+

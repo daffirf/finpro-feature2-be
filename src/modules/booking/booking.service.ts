@@ -1,28 +1,39 @@
-import { prisma } from '@/lib/prisma'
-import { ApiError } from '@/lib/errors'
+import { prisma } from '@/utils/database'
+import { ApiError } from '@/utils/api-error'
 import { 
   checkRoomAvailability, 
-  validateBookingDates, 
-  calculateBookingPrice 
-} from '@/lib/booking-utils'
-import { sendBookingCancellation } from '@/lib/email'
+  validateBookingDates
+} from '@/utils/booking.utils'
+import { calculateNights } from '@/utils/date.utils'
+import { sendBookingCancellation } from '@/utils/email.utils'
+import { BookingStatus } from '@/generated/prisma'
 
 export interface CreateBookingDTO {
-  propertyId: string
-  roomId: string
+  roomId: number
   checkIn: string
   checkOut: string
   guests: number
+  unitCount?: number
   notes?: string
 }
 
 export class BookingService {
   
-  async createBooking(userId: string, data: CreateBookingDTO) {
+  async createBooking(userId: number, data: CreateBookingDTO) {
     // Validate dates
     const dateValidation = validateBookingDates(data.checkIn, data.checkOut)
     if (!dateValidation.valid) {
       throw new ApiError(400, dateValidation.error || 'Invalid dates')
+    }
+
+    // Get room details
+    const room = await prisma.room.findUnique({
+      where: { id: data.roomId },
+      include: { property: true }
+    })
+
+    if (!room) {
+      throw new ApiError(404, 'Kamar tidak ditemukan')
     }
 
     // Check room availability
@@ -36,32 +47,50 @@ export class BookingService {
       throw new ApiError(400, 'Kamar tidak tersedia untuk tanggal yang dipilih')
     }
 
-    // Calculate total price
-    const totalPrice = await calculateBookingPrice(
-      data.roomId,
-      data.checkIn,
-      data.checkOut
-    )
+    // Calculate pricing
+    const nights = calculateNights(data.checkIn, data.checkOut)
+    const unitCount = data.unitCount || 1
+    const unitPrice = room.basePrice
+    const subTotal = unitPrice * nights * unitCount
 
-    // Create booking
+    // Generate booking number
+    const bookingNo = `BK-${Date.now()}-${userId}`
+
+    // Create booking with item
     const booking = await prisma.booking.create({
       data: {
+        bookingNo,
         userId,
-        propertyId: data.propertyId,
-        roomId: data.roomId,
         checkIn: new Date(data.checkIn),
         checkOut: new Date(data.checkOut),
-        guests: data.guests,
-        totalPrice: totalPrice,
+        totalGuests: data.guests,
+        totalPrice: subTotal,
         notes: data.notes || null,
-        status: 'PENDING_PAYMENT'
+        status: BookingStatus.pending_payment,
+        items: {
+          create: {
+            roomId: data.roomId,
+            unitCount,
+            unitPrice,
+            nights,
+            subTotal
+          }
+        }
       },
       include: {
-        property: {
-          select: { name: true, address: true }
+        user: {
+          select: { id: true, name: true, email: true }
         },
-        room: {
-          select: { name: true, capacity: true }
+        items: {
+          include: {
+            room: {
+              include: {
+                property: {
+                  select: { id: true, name: true, address: true }
+                }
+              }
+            }
+          }
         }
       }
     })
@@ -72,26 +101,26 @@ export class BookingService {
     }
   }
 
-  async getBookingById(bookingId: string, userId: string) {
+  async getBookingById(bookingId: number, userId: number) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         user: {
           select: {
+            id: true,
             name: true,
             email: true
           }
         },
-        property: {
-          select: {
-            name: true,
-            address: true
-          }
-        },
-        room: {
-          select: {
-            name: true,
-            capacity: true
+        items: {
+          include: {
+            room: {
+              include: {
+                property: {
+                  select: { id: true, name: true, address: true }
+                }
+              }
+            }
           }
         }
       }
@@ -109,25 +138,26 @@ export class BookingService {
     return { booking }
   }
 
-  async cancelBooking(bookingId: string, userId: string, reason?: string) {
+  async cancelBooking(bookingId: number, userId: number, reason?: string) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         user: {
           select: {
+            id: true,
             name: true,
             email: true
           }
         },
-        property: {
-          select: {
-            name: true,
-            address: true
-          }
-        },
-        room: {
-          select: {
-            name: true
+        items: {
+          include: {
+            room: {
+              include: {
+                property: {
+                  select: { id: true, name: true, address: true }
+                }
+              }
+            }
           }
         }
       }
@@ -141,17 +171,22 @@ export class BookingService {
       throw new ApiError(403, 'Unauthorized')
     }
 
-    if (!['PENDING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(booking.status)) {
+    const cancellableStatuses = [BookingStatus.pending_payment, BookingStatus.waiting_confirmed]
+    if (!cancellableStatuses.includes(booking.status as any)) {
       throw new ApiError(400, 'Pemesanan tidak dapat dibatalkan')
     }
 
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: 'CANCELLED' }
+      data: { 
+        status: BookingStatus.cancelled,
+        cancelledAt: new Date(),
+        cancelReason: reason || null
+      }
     })
 
-    if (reason) {
-      await sendBookingCancellation(booking, reason)
+    if (reason && booking.user.email) {
+      await sendBookingCancellation(booking as any, reason)
     }
 
     return {
@@ -160,7 +195,7 @@ export class BookingService {
     }
   }
 
-  async uploadPaymentProof(userId: string, bookingId: string, fileUrl: string) {
+  async uploadPaymentProof(userId: number, bookingId: number, fileUrl: string) {
     // Check if booking exists and belongs to user
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId }
@@ -174,7 +209,7 @@ export class BookingService {
       throw new ApiError(403, 'Unauthorized')
     }
 
-    if (booking.status !== 'PENDING_PAYMENT') {
+    if (booking.status !== BookingStatus.pending_payment) {
       throw new ApiError(400, 'Pemesanan tidak dalam status menunggu pembayaran')
     }
 
@@ -182,8 +217,9 @@ export class BookingService {
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
       data: {
-        paymentProof: fileUrl,
-        status: 'PAYMENT_CONFIRMED'
+        paymentProofUrl: fileUrl,
+        paymentMethod: 'manual_transfer',
+        status: BookingStatus.waiting_confirmed
       }
     })
 
@@ -193,15 +229,20 @@ export class BookingService {
     }
   }
 
-  async getUserBookings(userId: string) {
+  async getUserBookings(userId: number) {
     const bookings = await prisma.booking.findMany({
       where: { userId },
       include: {
-        property: {
-          select: { name: true, address: true }
-        },
-        room: {
-          select: { name: true, capacity: true }
+        items: {
+          include: {
+            room: {
+              include: {
+                property: {
+                  select: { id: true, name: true, address: true }
+                }
+              }
+            }
+          }
         }
       },
       orderBy: { createdAt: 'desc' }

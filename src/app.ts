@@ -9,8 +9,8 @@ import { ReviewRouter } from "./modules/review/review.router";
 import { RoomRouter } from "./modules/room/room.router";
 import { TenantRouter } from "./modules/tenant/tenant.router";
 import { UserRouter } from "./modules/user/user.router";
-import { CronRouter } from "./modules/cron/cron.router";
 import { UploadRouter } from "./modules/upload/upload.router";
+import { CronRouter } from "./modules/cron/cron.router";
 import { CronService } from "./services/cron.service";
 
 export class App {
@@ -29,7 +29,7 @@ export class App {
     this.app.use(cors({
       origin: process.env.NODE_ENV === 'production' 
         ? ['https://your-frontend-domain.com'] 
-        : ['http://localhost:3000', 'http://localhost:3001'],
+        : true, // Allow all origins in development
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -46,8 +46,8 @@ export class App {
     const roomRouter = new RoomRouter();
     const tenantRouter = new TenantRouter();
     const userRouter = new UserRouter();
-    const cronRouter = new CronRouter();
     const uploadRouter = new UploadRouter();
+    const cronRouter = new CronRouter();
 
     // API routes
     this.app.use("/api/auth", authRouter.getRouter());
@@ -57,13 +57,31 @@ export class App {
     this.app.use("/api/rooms", roomRouter.getRouter());
     this.app.use("/api/tenant", tenantRouter.getRouter());
     this.app.use("/api/user", userRouter.getRouter());
+    this.app.use("/api/uploads", uploadRouter.getRouter());
     this.app.use("/api/cron", cronRouter.getRouter());
-    
-    // Upload routes for serving static files
-    this.app.use("/uploads", uploadRouter.getRouter());
 
     // Legacy auth routes (for backward compatibility)
     this.app.use("/auth", authRouter.getRouter());
+
+    // Root route for testing
+    this.app.get("/", (req, res) => {
+      res.json({ 
+        message: "Express API Server is running!", 
+        version: "1.0.0",
+        endpoints: {
+          auth: "/api/auth/*",
+          bookings: "/api/bookings/*",
+          properties: "/api/properties/*",
+          reviews: "/api/reviews/*",
+          rooms: "/api/rooms/*",
+          tenant: "/api/tenant/*",
+          user: "/api/user/*",
+          uploads: "/api/uploads/*",
+          cron: "/api/cron/*",
+          legacy_auth: "/auth/*"
+        }
+      });
+    });
   }
 
   private handleError() {
@@ -73,7 +91,6 @@ export class App {
   public start() {
     this.app.listen(PORT, () => {
       console.log(`Server running on port: ${PORT}`);
-      console.log("✅ Cron jobs initialized");
     });
   }
 }

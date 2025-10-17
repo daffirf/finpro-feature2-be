@@ -13,8 +13,9 @@ export class UploadRouter {
 
   private initializeRoutes() {
     // Serve files from uploads directory
-    // Handle all paths with wildcard
-    this.router.get('*', this.uploadController.getFile)
+    // Handle nested paths
+    this.router.get('/:folder/:filename', this.uploadController.getFile)
+    this.router.get('/:filename', this.uploadController.getFile)
   }
 
   getRouter = () => {

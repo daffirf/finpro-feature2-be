@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { verifyToken as verifyJwt } from "@/lib/auth";
-import { ApiError } from "@/lib/errors";
+import { verifyToken as verifyJwt } from "@/utils/auth.utils";
+import { ApiError } from "@/utils/api-error";
 
 export class JwtMiddleware {
   verifyToken = (secretKey?: string) => {
@@ -9,7 +9,7 @@ export class JwtMiddleware {
 
       if (!token) throw new ApiError(401, "Unauthorized");
 
-      // Use centralized verifyToken function from auth.ts
+      // Use centralized verifyToken
       const payload = verifyJwt(token);
       
       if (!payload) {

@@ -2,8 +2,8 @@ export interface RegisterDTO {
     name: string
     email: string
     password: string
-    role?: 'USER' | 'TENANT' | 'ADMIN'  // Optional, default to USER
-    phone?: string  // Optional phone number
+    role?: 'user' | 'tenant'  
+    phoneNumber?: string  
 }
 
 export interface LoginDTO {
@@ -15,6 +15,6 @@ export interface UpdateUserDTO {
     name?: string
     email?: string
     password?: string
-    role?: 'USER' | 'TENANT' | 'ADMIN' 
-    phone?: string
+    role?: 'user' | 'tenant' 
+    phoneNumber?: string
 }

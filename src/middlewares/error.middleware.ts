@@ -7,7 +7,12 @@ export const errorMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  const status = err.status || 500;
+  const status = err.statusCode || 500;
   const message = err.message || "Something went wrong!";
-  res.status(status).send({ message });
+  const details = err.details;
+  
+  res.status(status).send({ 
+    message,
+    ...(details && { details })
+  });
 };
