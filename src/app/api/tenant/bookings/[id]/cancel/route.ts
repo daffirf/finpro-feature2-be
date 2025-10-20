@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
-import { sendBookingCancellation } from '@/lib/email'
+import { prisma } from '@/utils/database'
+import { verifyToken } from '@/utils/auth.utils'
+import { sendBookingCancellation } from '@/services/email.service'
 
 export async function POST(
   request: NextRequest,

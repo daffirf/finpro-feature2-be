@@ -28,7 +28,7 @@ class PropertyController {
         };
         this.getPropertyById = async (req, res, next) => {
             try {
-                const { id } = req.params;
+                const id = parseInt(req.params.id);
                 const result = await this.propertyService.getPropertyById(id);
                 res.status(200).json(result);
             }
@@ -38,8 +38,9 @@ class PropertyController {
         };
         this.getPropertyPrices = async (req, res, next) => {
             try {
-                const { id } = req.params;
-                const { roomId, month } = req.query;
+                const id = parseInt(req.params.id);
+                const roomId = parseInt(req.query.roomId);
+                const month = req.query.month;
                 const result = await this.propertyService.getPropertyPrices(id, roomId, month);
                 res.status(200).json(result);
             }

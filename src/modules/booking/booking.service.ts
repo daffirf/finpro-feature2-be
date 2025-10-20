@@ -5,7 +5,7 @@ import {
   validateBookingDates
 } from '@/utils/booking.utils'
 import { calculateNights } from '@/utils/date.utils'
-import { sendBookingCancellation } from '@/utils/email.utils'
+import { sendBookingCancellation } from '@/services/email.service'
 import { BookingStatus } from '@/generated/prisma'
 
 export interface CreateBookingDTO {
