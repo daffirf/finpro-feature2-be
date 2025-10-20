@@ -1,10 +1,9 @@
-import { prisma } from '@/lib/prisma'
-import { sendBookingCancellation, sendCheckInReminder } from '@/lib/email'
+import { prisma } from '@/utils/database'
+import { sendBookingCancellation, sendCheckInReminder } from '@/utils/email.utils'
 import { BookingStatus } from '@/generated/prisma'
 
 export class CronService {
   static init() {
-    console.log('✅ Cron jobs initialized')
     // In a real application, you would set up actual cron jobs here
     // For example using node-cron or agenda.js
   }

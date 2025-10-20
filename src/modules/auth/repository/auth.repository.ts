@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/utils/database'
 import { RegisterDTO, UpdateUserDTO } from '../dto/auth.dto'
 
 export class AuthRepository {
@@ -63,7 +63,6 @@ export class AuthRepository {
         phoneNumber: true,
         createdAt: true,
         updatedAt: true,
-        // Exclude password from response
       },
     })
   }

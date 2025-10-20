@@ -1,5 +1,5 @@
 import { RegisterDTO, LoginDTO, UpdateUserDTO } from "./dto/auth.dto";
-import { ApiError } from "@/lib/errors";
+import { ApiError } from "@/utils/api-error";
 import { AuthRepository } from "./repository/auth.repository";
 import { MailService } from "./../mail/mail.service";
 import { CloudinaryService } from "@/services/cloudinary.service";

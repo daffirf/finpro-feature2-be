@@ -1,5 +1,6 @@
-import { prisma } from './prisma'
+import { prisma } from './database'
 import { BookingStatus } from '@/generated/prisma'
+import { calculateNights } from './date.utils'
 
 /**
  * Check if a room is available for the specified date range
@@ -100,20 +101,6 @@ export async function calculateBookingPrice(
   const totalPrice = room.basePrice * nights * unitCount
 
   return totalPrice
-}
-
-/**
- * Calculate nights between two dates
- */
-export function calculateNights(
-  checkIn: string | Date,
-  checkOut: string | Date
-): number {
-  const startDate = new Date(checkIn)
-  const endDate = new Date(checkOut)
-  return Math.ceil(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  )
 }
 
 /**
