@@ -1,13 +1,18 @@
 import { Prisma } from '../generated/prisma'
 
 export class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public details?: any
-  ) {
-    super(message)
-    this.name = 'ApiError'
+  public statusCode: number;
+  public details?: any;
+
+  constructor(statusCode: number, message: string, details?: any) {
+    super(message); 
+    this.statusCode = statusCode;
+    this.details = details;
+    this.name = 'ApiError';
+
+    // This is important for restoring the prototype chain
+    // It ensures 'instanceof ApiError' works correctly
+    Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
 
@@ -15,6 +20,7 @@ export class ValidationError extends ApiError {
   constructor(message: string, details?: any) {
     super(400, message, details)
     this.name = 'ValidationError'
+    Object.setPrototypeOf(this, ValidationError.prototype)
   }
 }
 
@@ -22,6 +28,7 @@ export class UnauthorizedError extends ApiError {
   constructor(message: string = 'Unauthorized') {
     super(401, message)
     this.name = 'UnauthorizedError'
+    Object.setPrototypeOf(this, UnauthorizedError.prototype)
   }
 }
 
@@ -29,6 +36,7 @@ export class ForbiddenError extends ApiError {
   constructor(message: string = 'Forbidden') {
     super(403, message)
     this.name = 'ForbiddenError'
+    Object.setPrototypeOf(this, ForbiddenError.prototype)
   }
 }
 
@@ -36,6 +44,7 @@ export class NotFoundError extends ApiError {
   constructor(message: string = 'Resource not found') {
     super(404, message)
     this.name = 'NotFoundError'
+    Object.setPrototypeOf(this, NotFoundError.prototype)
   }
 }
 
