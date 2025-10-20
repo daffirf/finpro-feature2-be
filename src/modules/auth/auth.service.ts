@@ -1,20 +1,17 @@
-import { RegisterDTO, LoginDTO, UpdateUserDTO } from "./dto/auth.dto";
+import { RegisterDTO, LoginDTO } from "./dto/auth.dto";
 import { ApiError } from "@/utils/api-error";
 import { AuthRepository } from "./repository/auth.repository";
-import { MailService } from "./../mail/mail.service";
-import { CloudinaryService } from "@/services/cloudinary.service";
+import { EmailService } from "@/services/email.service";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 export class AuthService {
   private authRepo: AuthRepository;
-  private mailService: MailService;
-  private cloudinaryService: CloudinaryService;
+  private emailService: EmailService;
 
   constructor() {
     this.authRepo = new AuthRepository();
-    this.mailService = new MailService();
-    this.cloudinaryService = new CloudinaryService();
+    this.emailService = new EmailService();
   }
 
   // Register account
@@ -28,7 +25,7 @@ export class AuthService {
       throw new ApiError(400, `${role} with this email already exists`);
     }
 
-    // Hash password using centralized function
+    // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Create user
@@ -39,12 +36,17 @@ export class AuthService {
 
     // Remove password from response
     const { password, ...safeUser } = user;
+
+    // Send welcome email (non-blocking)
+    this.emailService.sendWelcomeEmail(user).catch((error) => {
+      console.error('Failed to send welcome email:', error);
+    });
+
     return safeUser;
   }
 
   // Login user with business logic
   async login(data: LoginDTO) {
-    // Authenticate user using centralized function
     const user = await this.authRepo.findByEmail(data.email);
     if (!user) {
       throw new ApiError(401, "Invalid email or password");
@@ -85,86 +87,9 @@ export class AuthService {
     const secretKey = process.env.JWT_SECRET || 'your-secret-key';
     const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
     
-    // Type assertion to satisfy jwt.sign type requirements
     return jwt.sign(payload, secretKey, { 
       expiresIn: expiresIn as any
     });
-  }
-
-  // Get user by ID with business logic
-  async getUserId(id: number) {
-    if (!id) {
-      throw new ApiError(400, "User ID is required");
-    }
-
-    const user = await this.authRepo.findById(id);
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
-
-    // Remove password from response
-    const { password, ...safeUser } = user;
-    return safeUser;
-  }
-
-  // Update user with business logic
-  async updateUser(id: number, data: UpdateUserDTO) {
-    // Validate user exists
-    const existingUser = await this.authRepo.findById(id);
-    if (!existingUser) {
-      throw new ApiError(404, "User not found");
-    }
-
-    // Validate email format if provided
-    if (data.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
-        throw new ApiError(400, "Invalid email format");
-      }
-
-      // Check if email is already taken by another user
-      const emailExists = await this.authRepo.findByEmail(data.email);
-      if (emailExists && emailExists.id !== id) {
-        throw new ApiError(400, "Email already taken");
-      }
-    }
-
-    // Validate password strength if provided
-    if (data.password) {
-      if (data.password.length < 6) {
-        throw new ApiError(400, "Password must be at least 6 characters");
-      }
-      // Hash new password
-      data.password = await bcrypt.hash(data.password, 10);
-    }
-
-    // Update user
-    const user = await this.authRepo.updateUser(id, data);
-
-    // Remove password from response
-    const { password, ...safeUser } = user;
-    return safeUser;
-  }
-
-  // Get current user (alias for getUserId)
-  async getMe(id: number) {
-    return this.getUserId(id);
-  }
-
-  // Delete user with business logic
-  async deleteUser(id: number) {
-    const user = await this.authRepo.findById(id);
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
-
-    await this.authRepo.deleteUser(id);
-    return { message: "User deleted successfully" };
-  }
-
-  // Get all users (admin function)
-  async getAllUsers() {
-    return this.authRepo.findAll();
   }
 
   // Change password with business logic

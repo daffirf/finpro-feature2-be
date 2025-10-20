@@ -1,5 +1,5 @@
 import { prisma } from '@/utils/database'
-import { sendBookingCancellation, sendCheckInReminder } from '@/utils/email.utils'
+import { sendBookingCancellation, sendCheckInReminder } from '@/services/email.service'
 import { BookingStatus } from '@/generated/prisma'
 
 export class CronService {

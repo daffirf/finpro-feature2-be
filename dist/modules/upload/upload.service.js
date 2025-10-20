@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadService = void 0;
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
-const errors_1 = require("@/lib/errors");
+const api_error_1 = require("@/utils/api-error");
 class UploadService {
     async getFile(filePath) {
         try {
@@ -25,7 +25,7 @@ class UploadService {
             };
         }
         catch (error) {
-            throw new errors_1.ApiError(404, 'File not found');
+            throw new api_error_1.ApiError(404, 'File not found');
         }
     }
     getContentType(extension) {

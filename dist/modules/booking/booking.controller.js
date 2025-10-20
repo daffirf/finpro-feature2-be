@@ -19,7 +19,7 @@ class BookingController {
         this.getBookingById = async (req, res, next) => {
             try {
                 const userId = req.user?.id;
-                const bookingId = req.params.id;
+                const bookingId = parseInt(req.params.id);
                 const result = await this.bookingService.getBookingById(bookingId, userId);
                 res.status(200).json(result);
             }
@@ -30,7 +30,7 @@ class BookingController {
         this.cancelBooking = async (req, res, next) => {
             try {
                 const userId = req.user?.id;
-                const bookingId = req.params.id;
+                const bookingId = parseInt(req.params.id);
                 const { reason } = req.body;
                 const result = await this.bookingService.cancelBooking(bookingId, userId, reason);
                 res.status(200).json(result);
@@ -43,7 +43,7 @@ class BookingController {
             try {
                 const userId = req.user?.id;
                 const file = req.file;
-                const bookingId = req.body.bookingId;
+                const bookingId = parseInt(req.body.bookingId);
                 if (!file || !bookingId) {
                     return res.status(400).json({
                         error: 'File dan booking ID diperlukan'

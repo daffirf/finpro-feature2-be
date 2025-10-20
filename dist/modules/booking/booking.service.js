@@ -1,43 +1,74 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BookingService = void 0;
-const prisma_1 = require("@/lib/prisma");
-const errors_1 = require("@/lib/errors");
-const booking_utils_1 = require("@/lib/booking-utils");
-const email_1 = require("@/lib/email");
+const database_1 = require("@/utils/database");
+const api_error_1 = require("@/utils/api-error");
+const booking_utils_1 = require("@/utils/booking.utils");
+const date_utils_1 = require("@/utils/date.utils");
+const email_utils_1 = require("@/utils/email.utils");
+const prisma_1 = require("@/generated/prisma");
 class BookingService {
     async createBooking(userId, data) {
         // Validate dates
         const dateValidation = (0, booking_utils_1.validateBookingDates)(data.checkIn, data.checkOut);
         if (!dateValidation.valid) {
-            throw new errors_1.ApiError(400, dateValidation.error || 'Invalid dates');
+            throw new api_error_1.ApiError(400, dateValidation.error || 'Invalid dates');
+        }
+        // Get room details
+        const room = await database_1.prisma.room.findUnique({
+            where: { id: data.roomId },
+            include: { property: true }
+        });
+        if (!room) {
+            throw new api_error_1.ApiError(404, 'Kamar tidak ditemukan');
         }
         // Check room availability
         const isAvailable = await (0, booking_utils_1.checkRoomAvailability)(data.roomId, data.checkIn, data.checkOut);
         if (!isAvailable) {
-            throw new errors_1.ApiError(400, 'Kamar tidak tersedia untuk tanggal yang dipilih');
+            throw new api_error_1.ApiError(400, 'Kamar tidak tersedia untuk tanggal yang dipilih');
         }
-        // Calculate total price
-        const totalPrice = await (0, booking_utils_1.calculateBookingPrice)(data.roomId, data.checkIn, data.checkOut);
-        // Create booking
-        const booking = await prisma_1.prisma.booking.create({
+        // Calculate pricing
+        const nights = (0, date_utils_1.calculateNights)(data.checkIn, data.checkOut);
+        const unitCount = data.unitCount || 1;
+        const unitPrice = room.basePrice;
+        const subTotal = unitPrice * nights * unitCount;
+        // Generate booking number
+        const bookingNo = `BK-${Date.now()}-${userId}`;
+        // Create booking with item
+        const booking = await database_1.prisma.booking.create({
             data: {
+                bookingNo,
                 userId,
-                propertyId: data.propertyId,
-                roomId: data.roomId,
                 checkIn: new Date(data.checkIn),
                 checkOut: new Date(data.checkOut),
-                guests: data.guests,
-                totalPrice: totalPrice,
+                totalGuests: data.guests,
+                totalPrice: subTotal,
                 notes: data.notes || null,
-                status: 'PENDING_PAYMENT'
+                status: prisma_1.BookingStatus.pending_payment,
+                items: {
+                    create: {
+                        roomId: data.roomId,
+                        unitCount,
+                        unitPrice,
+                        nights,
+                        subTotal
+                    }
+                }
             },
             include: {
-                property: {
-                    select: { name: true, address: true }
+                user: {
+                    select: { id: true, name: true, email: true }
                 },
-                room: {
-                    select: { name: true, capacity: true }
+                items: {
+                    include: {
+                        room: {
+                            include: {
+                                property: {
+                                    select: { id: true, name: true, address: true }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -47,76 +78,82 @@ class BookingService {
         };
     }
     async getBookingById(bookingId, userId) {
-        const booking = await prisma_1.prisma.booking.findUnique({
+        const booking = await database_1.prisma.booking.findUnique({
             where: { id: bookingId },
             include: {
                 user: {
                     select: {
+                        id: true,
                         name: true,
                         email: true
                     }
                 },
-                property: {
-                    select: {
-                        name: true,
-                        address: true
-                    }
-                },
-                room: {
-                    select: {
-                        name: true,
-                        capacity: true
+                items: {
+                    include: {
+                        room: {
+                            include: {
+                                property: {
+                                    select: { id: true, name: true, address: true }
+                                }
+                            }
+                        }
                     }
                 }
             }
         });
         if (!booking) {
-            throw new errors_1.ApiError(404, 'Pemesanan tidak ditemukan');
+            throw new api_error_1.ApiError(404, 'Pemesanan tidak ditemukan');
         }
         // Check if user has access to this booking
         if (booking.userId !== userId) {
-            throw new errors_1.ApiError(403, 'Unauthorized');
+            throw new api_error_1.ApiError(403, 'Unauthorized');
         }
         return { booking };
     }
     async cancelBooking(bookingId, userId, reason) {
-        const booking = await prisma_1.prisma.booking.findUnique({
+        const booking = await database_1.prisma.booking.findUnique({
             where: { id: bookingId },
             include: {
                 user: {
                     select: {
+                        id: true,
                         name: true,
                         email: true
                     }
                 },
-                property: {
-                    select: {
-                        name: true,
-                        address: true
-                    }
-                },
-                room: {
-                    select: {
-                        name: true
+                items: {
+                    include: {
+                        room: {
+                            include: {
+                                property: {
+                                    select: { id: true, name: true, address: true }
+                                }
+                            }
+                        }
                     }
                 }
             }
         });
         if (!booking) {
-            throw new errors_1.ApiError(404, 'Pemesanan tidak ditemukan');
+            throw new api_error_1.ApiError(404, 'Pemesanan tidak ditemukan');
         }
         if (booking.userId !== userId) {
-            throw new errors_1.ApiError(403, 'Unauthorized');
+            throw new api_error_1.ApiError(403, 'Unauthorized');
         }
-        if (!['PENDING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(booking.status)) {
-            throw new errors_1.ApiError(400, 'Pemesanan tidak dapat dibatalkan');
+        const cancellableStatuses = [prisma_1.BookingStatus.pending_payment, prisma_1.BookingStatus.waiting_confirmed];
+        if (!cancellableStatuses.includes(booking.status)) {
+            throw new api_error_1.ApiError(400, 'Pemesanan tidak dapat dibatalkan');
         }
-        const updatedBooking = await prisma_1.prisma.booking.update({
+        const updatedBooking = await database_1.prisma.booking.update({
             where: { id: bookingId },
-            data: { status: 'CANCELLED' }
+            data: {
+                status: prisma_1.BookingStatus.cancelled,
+                cancelledAt: new Date(),
+                cancelReason: reason || null
+            }
         });
-        if (reason) {
-            await (0, email_1.sendBookingCancellation)(booking, reason);
+        if (reason && booking.user.email) {
+            await (0, email_utils_1.sendBookingCancellation)(booking, reason);
         }
         return {
             booking: updatedBooking,
@@ -125,24 +162,25 @@ class BookingService {
     }
     async uploadPaymentProof(userId, bookingId, fileUrl) {
         // Check if booking exists and belongs to user
-        const booking = await prisma_1.prisma.booking.findUnique({
+        const booking = await database_1.prisma.booking.findUnique({
             where: { id: bookingId }
         });
         if (!booking) {
-            throw new errors_1.ApiError(404, 'Pemesanan tidak ditemukan');
+            throw new api_error_1.ApiError(404, 'Pemesanan tidak ditemukan');
         }
         if (booking.userId !== userId) {
-            throw new errors_1.ApiError(403, 'Unauthorized');
+            throw new api_error_1.ApiError(403, 'Unauthorized');
         }
-        if (booking.status !== 'PENDING_PAYMENT') {
-            throw new errors_1.ApiError(400, 'Pemesanan tidak dalam status menunggu pembayaran');
+        if (booking.status !== prisma_1.BookingStatus.pending_payment) {
+            throw new api_error_1.ApiError(400, 'Pemesanan tidak dalam status menunggu pembayaran');
         }
         // Update booking with payment proof
-        const updatedBooking = await prisma_1.prisma.booking.update({
+        const updatedBooking = await database_1.prisma.booking.update({
             where: { id: bookingId },
             data: {
-                paymentProof: fileUrl,
-                status: 'PAYMENT_CONFIRMED'
+                paymentProofUrl: fileUrl,
+                paymentMethod: 'manual_transfer',
+                status: prisma_1.BookingStatus.waiting_confirmed
             }
         });
         return {
@@ -151,14 +189,19 @@ class BookingService {
         };
     }
     async getUserBookings(userId) {
-        const bookings = await prisma_1.prisma.booking.findMany({
+        const bookings = await database_1.prisma.booking.findMany({
             where: { userId },
             include: {
-                property: {
-                    select: { name: true, address: true }
-                },
-                room: {
-                    select: { name: true, capacity: true }
+                items: {
+                    include: {
+                        room: {
+                            include: {
+                                property: {
+                                    select: { id: true, name: true, address: true }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }

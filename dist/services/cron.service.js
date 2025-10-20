@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CronService = void 0;
-const prisma_1 = require("@/lib/prisma");
-const email_1 = require("@/lib/email");
+const database_1 = require("@/utils/database");
+const email_utils_1 = require("@/utils/email.utils");
+const prisma_1 = require("@/generated/prisma");
 class CronService {
     static init() {
-        console.log('✅ Cron jobs initialized');
         // In a real application, you would set up actual cron jobs here
         // For example using node-cron or agenda.js
     }
@@ -13,9 +13,9 @@ class CronService {
         try {
             const expiredTime = new Date();
             expiredTime.setHours(expiredTime.getHours() - 24); // 24 hours ago
-            const expiredBookings = await prisma_1.prisma.booking.findMany({
+            const expiredBookings = await database_1.prisma.booking.findMany({
                 where: {
-                    status: 'PENDING_PAYMENT',
+                    status: prisma_1.BookingStatus.pending_payment,
                     createdAt: {
                         lte: expiredTime
                     }
@@ -23,29 +23,38 @@ class CronService {
                 include: {
                     user: {
                         select: {
+                            id: true,
                             name: true,
                             email: true
                         }
                     },
-                    property: {
-                        select: {
-                            name: true,
-                            address: true
-                        }
-                    },
-                    room: {
-                        select: {
-                            name: true
+                    items: {
+                        include: {
+                            room: {
+                                include: {
+                                    property: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            address: true
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             });
             for (const booking of expiredBookings) {
-                await prisma_1.prisma.booking.update({
+                await database_1.prisma.booking.update({
                     where: { id: booking.id },
-                    data: { status: 'CANCELLED' }
+                    data: {
+                        status: prisma_1.BookingStatus.cancelled,
+                        cancelledAt: new Date(),
+                        cancelReason: 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam'
+                    }
                 });
-                await (0, email_1.sendBookingCancellation)(booking, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam');
+                await (0, email_utils_1.sendBookingCancellation)(booking, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam');
             }
             return {
                 message: `${expiredBookings.length} expired bookings cancelled`,
@@ -64,9 +73,9 @@ class CronService {
             tomorrow.setHours(0, 0, 0, 0);
             const dayAfterTomorrow = new Date(tomorrow);
             dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
-            const upcomingBookings = await prisma_1.prisma.booking.findMany({
+            const upcomingBookings = await database_1.prisma.booking.findMany({
                 where: {
-                    status: 'PAYMENT_CONFIRMED',
+                    status: prisma_1.BookingStatus.confirmed,
                     checkIn: {
                         gte: tomorrow,
                         lt: dayAfterTomorrow
@@ -75,25 +84,30 @@ class CronService {
                 include: {
                     user: {
                         select: {
+                            id: true,
                             name: true,
                             email: true
                         }
                     },
-                    property: {
-                        select: {
-                            name: true,
-                            address: true
-                        }
-                    },
-                    room: {
-                        select: {
-                            name: true
+                    items: {
+                        include: {
+                            room: {
+                                include: {
+                                    property: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            address: true
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             });
             for (const booking of upcomingBookings) {
-                await (0, email_1.sendCheckInReminder)(booking);
+                await (0, email_utils_1.sendCheckInReminder)(booking);
             }
             return {
                 message: `${upcomingBookings.length} check-in reminders sent`,
