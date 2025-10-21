@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register src/index.ts",
     "dev:watch": "nodemon --exec ts-node -r tsconfig-paths/register src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-templates",
+    "copy-templates": "node -e \"const fs = require('fs'); const path = require('path'); const src = 'src/services/email-templates'; const dest = 'dist/services/email-templates'; if (!fs.existsSync(dest)) { fs.mkdirSync(dest, {recursive: true}); } fs.readdirSync(src).forEach(file => { fs.copyFileSync(path.join(src, file), path.join(dest, file)); console.log('✅ Copied template:', file); });\"",
     "start": "node dist/index.js",
     "lint": "eslint",
     "db:push": "prisma db push",

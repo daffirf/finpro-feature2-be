@@ -5,7 +5,7 @@ const database_1 = require("@/utils/database");
 const api_error_1 = require("@/utils/api-error");
 const booking_utils_1 = require("@/utils/booking.utils");
 const date_utils_1 = require("@/utils/date.utils");
-const email_utils_1 = require("@/utils/email.utils");
+const email_service_1 = require("@/services/email.service");
 const prisma_1 = require("@/generated/prisma");
 class BookingService {
     async createBooking(userId, data) {
@@ -153,7 +153,7 @@ class BookingService {
             }
         });
         if (reason && booking.user.email) {
-            await (0, email_utils_1.sendBookingCancellation)(booking, reason);
+            await (0, email_service_1.sendBookingCancellation)(booking, reason);
         }
         return {
             booking: updatedBooking,

@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -30,10 +30,26 @@ model User {
   properties         Property[]          @relation("PropertyOwner")
   reviewReplies      ReviewReply[]
   reviews            Review[]
+  verificationTokens VerificationToken[]
 
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+model VerificationToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  token     String    @unique
+  type      TokenType @default(email_verification)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId, type])
+  @@map("verification_tokens")
 }
 
 model Property {
@@ -236,6 +252,11 @@ model ReviewReply {
 enum UserRole {
   user
   tenant
+}
+
+enum TokenType {
+  email_verification
+  password_reset
 }
 
 enum BookingStatus {

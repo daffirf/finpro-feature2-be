@@ -1,18 +1,32 @@
 import { z } from 'zod';
 
-// Register Schema
+// Register Schema (tanpa password - email verification flow)
 export const registerSchema = z.object({
   name: z.string()
     .min(2, "Name must be at least 2 characters")
-    .max(50, "Name must be at most 16 characters"),
+    .max(50, "Name must be at most 50 characters"),
   email: z.string()
     .email("Invalid email format"),
-  password: z.string()
-    .min(6, "Password must be at least 6 characters"),
   role: z.enum(['user', 'tenant'])
     .optional()
     .default('user'),
-  phoneNumber: z.string().optional(),
+});
+
+// Verify Email Token Schema (query parameter)
+export const verifyEmailTokenSchema = z.object({
+  token: z.string()
+    .min(1, "Token is required")
+    .length(64, "Invalid token format"),
+});
+
+// Set Password Schema
+export const setPasswordSchema = z.object({
+  token: z.string()
+    .min(1, "Token is required")
+    .length(64, "Invalid token format"),
+  password: z.string()
+    .min(6, "Password must be at least 6 characters")
+    .max(100, "Password must be at most 100 characters"),
 });
 
 // Login Schema
@@ -42,6 +56,8 @@ export const resetPasswordSchema = z.object({
 
 // Export types yang di-infer dari schema (bonus: auto type-safety!)
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type VerifyEmailTokenInput = z.infer<typeof verifyEmailTokenSchema>;
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

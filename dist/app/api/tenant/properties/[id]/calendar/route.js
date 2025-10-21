@@ -2,19 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GET = GET;
 const server_1 = require("next/server");
-const prisma_1 = require("@/lib/prisma");
-const auth_1 = require("@/lib/auth");
+const database_1 = require("@/utils/database");
+const auth_utils_1 = require("@/utils/auth.utils");
 async function GET(request, { params }) {
     try {
         const token = request.cookies.get('auth-token')?.value;
         if (!token) {
             return server_1.NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        const user = (0, auth_1.verifyToken)(token);
+        const user = (0, auth_utils_1.verifyToken)(token);
         if (!user || user.role !== 'TENANT') {
             return server_1.NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const tenant = await prisma_1.prisma.tenant.findUnique({
+        const tenant = await database_1.prisma.tenant.findUnique({
             where: { userId: user.id }
         });
         if (!tenant) {
@@ -25,7 +25,7 @@ async function GET(request, { params }) {
         const month = searchParams.get('month'); // Format: YYYY-MM
         const year = searchParams.get('year');
         // Verify property belongs to tenant
-        const property = await prisma_1.prisma.property.findFirst({
+        const property = await database_1.prisma.property.findFirst({
             where: {
                 id,
                 tenantId: tenant.id
@@ -64,7 +64,7 @@ async function GET(request, { params }) {
             endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         }
         // Get all bookings in the date range
-        const bookings = await prisma_1.prisma.booking.findMany({
+        const bookings = await database_1.prisma.booking.findMany({
             where: {
                 propertyId: id,
                 status: { notIn: ['CANCELLED'] },
