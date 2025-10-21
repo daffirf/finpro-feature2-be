@@ -2,20 +2,20 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.POST = POST;
 const server_1 = require("next/server");
-const prisma_1 = require("@/lib/prisma");
-const auth_1 = require("@/lib/auth");
-const email_1 = require("@/lib/email");
+const database_1 = require("@/utils/database");
+const auth_utils_1 = require("@/utils/auth.utils");
+const email_service_1 = require("@/services/email.service");
 async function POST(request, { params }) {
     try {
         const token = request.cookies.get('auth-token')?.value;
         if (!token) {
             return server_1.NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        const user = (0, auth_1.verifyToken)(token);
+        const user = (0, auth_utils_1.verifyToken)(token);
         if (!user || user.role !== 'TENANT') {
             return server_1.NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const tenant = await prisma_1.prisma.tenant.findUnique({
+        const tenant = await database_1.prisma.tenant.findUnique({
             where: { userId: user.id }
         });
         if (!tenant) {
@@ -24,7 +24,7 @@ async function POST(request, { params }) {
         const { id } = await params;
         const body = await request.json();
         const { reason } = body;
-        const booking = await prisma_1.prisma.booking.findUnique({
+        const booking = await database_1.prisma.booking.findUnique({
             where: { id },
             include: {
                 property: {
@@ -50,13 +50,13 @@ async function POST(request, { params }) {
         if (booking.status !== 'PENDING_PAYMENT') {
             return server_1.NextResponse.json({ error: 'Pemesanan hanya dapat dibatalkan sebelum user upload bukti pembayaran' }, { status: 400 });
         }
-        const updatedBooking = await prisma_1.prisma.booking.update({
+        const updatedBooking = await database_1.prisma.booking.update({
             where: { id },
             data: { status: 'CANCELLED' }
         });
         // Send cancellation email to user
         try {
-            await (0, email_1.sendBookingCancellation)(booking, reason);
+            await (0, email_service_1.sendBookingCancellation)(booking, reason);
         }
         catch (emailError) {
             // Log but don't fail the request

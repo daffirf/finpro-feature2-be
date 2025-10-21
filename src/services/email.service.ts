@@ -2,6 +2,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
+import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, FRONTEND_URL } from '@/config/env';
 
 export class EmailService {
   private static transporter?: Transporter;
@@ -14,29 +15,67 @@ export class EmailService {
   }
 
   private static initTransporter() {
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-
     if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
       console.warn('⚠️  SMTP not configured. Emails will be logged to console.');
+      console.log('📝 Required: SMTP_HOST, SMTP_USER, SMTP_PASS');
       return;
     }
 
-    EmailService.transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: parseInt(SMTP_PORT || '587'),
-      secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
-    });
+    const port = parseInt(SMTP_PORT || '587');
+    
+    try {
+      EmailService.transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: port,
+        secure: port === 465, // true for 465, false for 587
+        auth: { 
+          user: SMTP_USER, 
+          pass: SMTP_PASS 
+        }
+      });
 
-    console.log('✅ Email service configured');
+      console.log('✅ Email service configured');
+      console.log(`📧 SMTP: ${SMTP_HOST}:${port} (secure: ${port === 465})`);
+      console.log(`👤 User: ${SMTP_USER}`);
+    } catch (error) {
+      console.error('❌ Failed to configure email service:', error);
+    }
   }
 
   private getTemplate(name: string, data: any): string {
     // Check cache first
     if (!EmailService.templateCache.has(name)) {
-      const templatePath = path.join(__dirname, 'email-templates', `${name}.hbs`);
-      const source = fs.readFileSync(templatePath, 'utf-8');
-      EmailService.templateCache.set(name, handlebars.compile(source));
+      // Try multiple paths (production dist/ and development src/)
+      const paths = [
+        path.join(__dirname, 'email-templates', `${name}.hbs`), // Compiled dist/
+        path.join(process.cwd(), 'src/services/email-templates', `${name}.hbs`), // Source
+        path.join(process.cwd(), 'dist/services/email-templates', `${name}.hbs`) // Absolute dist
+      ];
+
+      let templateSource: string | null = null;
+      let usedPath: string = '';
+
+      for (const templatePath of paths) {
+        try {
+          if (fs.existsSync(templatePath)) {
+            templateSource = fs.readFileSync(templatePath, 'utf-8');
+            usedPath = templatePath;
+            console.log(`✅ Template loaded: ${templatePath}`);
+            break;
+          }
+        } catch (error) {
+          // Try next path
+          continue;
+        }
+      }
+
+      if (!templateSource) {
+        console.error('❌ Template not found in any of these paths:');
+        paths.forEach(p => console.error(`   - ${p}`));
+        throw new Error(`Email template "${name}" not found`);
+      }
+
+      EmailService.templateCache.set(name, handlebars.compile(templateSource));
     }
 
     return EmailService.templateCache.get(name)!(data);
@@ -50,7 +89,7 @@ export class EmailService {
 
     try {
       await EmailService.transporter.sendMail({
-        from: `"Property Rent" <${process.env.SMTP_USER}>`,
+        from: `"Property Rent" <${SMTP_USER}>`,
         to,
         subject,
         html
@@ -59,6 +98,9 @@ export class EmailService {
       return true;
     } catch (error) {
       console.error('❌ Email failed:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
       return false;
     }
   }
@@ -68,20 +110,33 @@ export class EmailService {
     const html = this.getTemplate('welcome', {
       email: user.email,
       name: user.name || user.email,
-      loginUrl: `${process.env.FRONTEND_URL}/login`,
-      supportUrl: `${process.env.FRONTEND_URL}/support`,
+      loginUrl: `${FRONTEND_URL}/login`,
+      supportUrl: `${FRONTEND_URL}/support`,
       year: new Date().getFullYear()
     });
 
     return this.send(user.email, 'Welcome to Property Rent! 🏠', html);
   }
 
+  async sendEmailVerification(user: { email: string; name?: string | null }, token: string) {
+    const html = this.getTemplate('welcome', {
+      email: user.email,
+      name: user.name || user.email,
+      verificationUrl: `${FRONTEND_URL}/auth/set-password?token=${token}`,
+      expiryHours: 1,
+      supportUrl: `${FRONTEND_URL}/support`,
+      year: new Date().getFullYear()
+    });
+
+    return this.send(user.email, 'Verify Your Email Address 📧', html);
+  }
+
   async sendPasswordResetEmail(user: { email: string; name?: string | null }, token: string) {
     const html = this.getTemplate('reset-password', {
       email: user.email,
       name: user.name || user.email,
-      resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${token}`,
-      supportUrl: `${process.env.FRONTEND_URL}/support`,
+      resetLink: `${FRONTEND_URL}/auth/reset-password?token=${token}`,
+      supportUrl: `${FRONTEND_URL}/support`,
       year: new Date().getFullYear()
     });
 

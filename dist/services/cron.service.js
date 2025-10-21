@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CronService = void 0;
 const database_1 = require("@/utils/database");
-const email_utils_1 = require("@/utils/email.utils");
+const email_service_1 = require("@/services/email.service");
 const prisma_1 = require("@/generated/prisma");
 class CronService {
     static init() {
@@ -54,7 +54,7 @@ class CronService {
                         cancelReason: 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam'
                     }
                 });
-                await (0, email_utils_1.sendBookingCancellation)(booking, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam');
+                await (0, email_service_1.sendBookingCancellation)(booking, 'Pemesanan dibatalkan otomatis karena tidak ada konfirmasi pembayaran dalam 24 jam');
             }
             return {
                 message: `${expiredBookings.length} expired bookings cancelled`,
@@ -107,7 +107,7 @@ class CronService {
                 }
             });
             for (const booking of upcomingBookings) {
-                await (0, email_utils_1.sendCheckInReminder)(booking);
+                await (0, email_service_1.sendCheckInReminder)(booking);
             }
             return {
                 message: `${upcomingBookings.length} check-in reminders sent`,

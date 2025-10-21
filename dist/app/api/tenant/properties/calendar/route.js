@@ -2,19 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GET = GET;
 const server_1 = require("next/server");
-const prisma_1 = require("@/lib/prisma");
-const auth_1 = require("@/lib/auth");
+const database_1 = require("@/utils/database");
+const auth_utils_1 = require("@/utils/auth.utils");
 async function GET(request) {
     try {
         const token = request.cookies.get('auth-token')?.value;
         if (!token) {
             return server_1.NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        const user = (0, auth_1.verifyToken)(token);
+        const user = (0, auth_utils_1.verifyToken)(token);
         if (!user || user.role !== 'TENANT') {
             return server_1.NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const tenant = await prisma_1.prisma.tenant.findUnique({
+        const tenant = await database_1.prisma.tenant.findUnique({
             where: { userId: user.id }
         });
         if (!tenant) {
@@ -42,7 +42,7 @@ async function GET(request) {
             endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         }
         // Get all properties owned by tenant
-        const properties = await prisma_1.prisma.property.findMany({
+        const properties = await database_1.prisma.property.findMany({
             where: {
                 tenantId: tenant.id,
                 isActive: true
@@ -59,7 +59,7 @@ async function GET(request) {
         });
         // Get all bookings for these properties
         const propertyIds = properties.map(p => p.id);
-        const bookings = await prisma_1.prisma.booking.findMany({
+        const bookings = await database_1.prisma.booking.findMany({
             where: {
                 propertyId: { in: propertyIds },
                 status: { notIn: ['CANCELLED'] },

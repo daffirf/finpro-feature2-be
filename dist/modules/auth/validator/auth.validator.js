@@ -1,20 +1,32 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPasswordSchema = exports.changePasswordSchema = exports.updateUserSchema = exports.loginSchema = exports.registerSchema = void 0;
+exports.resetPasswordSchema = exports.changePasswordSchema = exports.updateUserSchema = exports.loginSchema = exports.setPasswordSchema = exports.verifyEmailTokenSchema = exports.registerSchema = void 0;
 const zod_1 = require("zod");
-// Register Schema
+// Register Schema (tanpa password - email verification flow)
 exports.registerSchema = zod_1.z.object({
     name: zod_1.z.string()
         .min(2, "Name must be at least 2 characters")
-        .max(50, "Name must be at most 16 characters"),
+        .max(50, "Name must be at most 50 characters"),
     email: zod_1.z.string()
         .email("Invalid email format"),
-    password: zod_1.z.string()
-        .min(6, "Password must be at least 6 characters"),
     role: zod_1.z.enum(['user', 'tenant'])
         .optional()
         .default('user'),
-    phoneNumber: zod_1.z.string().optional(),
+});
+// Verify Email Token Schema (query parameter)
+exports.verifyEmailTokenSchema = zod_1.z.object({
+    token: zod_1.z.string()
+        .min(1, "Token is required")
+        .length(64, "Invalid token format"),
+});
+// Set Password Schema
+exports.setPasswordSchema = zod_1.z.object({
+    token: zod_1.z.string()
+        .min(1, "Token is required")
+        .length(64, "Invalid token format"),
+    password: zod_1.z.string()
+        .min(6, "Password must be at least 6 characters")
+        .max(100, "Password must be at most 100 characters"),
 });
 // Login Schema
 exports.loginSchema = zod_1.z.object({

@@ -1,9 +1,16 @@
 export interface RegisterDTO {
     name: string
     email: string
-    password: string
     role?: 'user' | 'tenant'  
-    phoneNumber?: string  
+}
+
+export interface VerifyEmailDTO {
+    token: string;
+}
+
+export interface SetPasswordDTO {
+    token: string;
+    password: string;
 }
 
 export interface LoginDTO {

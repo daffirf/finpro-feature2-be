@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { BookingController } from './booking.controller'
 import { JwtMiddleware } from '@/middlewares/jwt.middleware'
+import { rbac } from '@/middlewares/rbac.middleware'
 import multer from 'multer'
 
 const upload = multer({ 
@@ -21,23 +22,23 @@ export class BookingRouter {
   }
 
   private initializeRoutes() {
-    // All booking routes require authentication
-    this.router.use(this.jwtMiddleware.verifyToken())
-
-    // Create booking
-    this.router.post('/', this.bookingController.createBooking)
+    // All booking routes require authentication AND user role (tenant cannot book)
+    const auth = this.jwtMiddleware.verifyToken()
     
-    // Get user bookings
-    this.router.get('/user', this.bookingController.getUserBookings)
+    // Only verified USER can create bookings (tenant tidak bisa booking)
+    this.router.post('/', auth, rbac.onlyUser, this.bookingController.createBooking)
     
-    // Upload payment proof
-    this.router.post('/payment-proof', upload.single('file'), this.bookingController.uploadPaymentProof)
+    // Only verified USER can view their bookings
+    this.router.get('/user', auth, rbac.onlyUser, this.bookingController.getUserBookings)
     
-    // Get booking by ID
-    this.router.get('/:id', this.bookingController.getBookingById)
+    // Only verified USER can upload payment proof
+    this.router.post('/payment-proof', auth, rbac.onlyUser, upload.single('file'), this.bookingController.uploadPaymentProof)
     
-    // Cancel booking
-    this.router.post('/:id/cancel', this.bookingController.cancelBooking)
+    // Only verified USER can get booking details
+    this.router.get('/:id', auth, rbac.onlyUser, this.bookingController.getBookingById)
+    
+    // Only verified USER can cancel booking
+    this.router.post('/:id/cancel', auth, rbac.onlyUser, this.bookingController.cancelBooking)
   }
 
   getRouter = () => {

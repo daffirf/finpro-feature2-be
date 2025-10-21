@@ -17,10 +17,16 @@ class AuthRouter {
         this.initializedRoutes();
     }
     initializedRoutes() {
-        // Public routes - Authentication
+        // Public routes - Registration & Email Verification
         this.router.post("/register", (0, validate_middleware_1.validateAuth)(auth_validator_1.registerSchema), this.authController.register);
+        this.router.get("/verify-email", this.authController.verifyEmailToken);
+        this.router.post("/set-password", (0, validate_middleware_1.validateAuth)(auth_validator_1.setPasswordSchema), this.authController.setPassword);
+        // Public routes - Authentication
         this.router.post("/login", (0, validate_middleware_1.validateAuth)(auth_validator_1.loginSchema), this.authController.login);
         this.router.post("/logout", this.authController.logout);
+        // Public routes - Password Reset (via email)
+        this.router.post("/forgot-password", this.authController.forgotPassword);
+        this.router.post("/reset-password-with-token", this.authController.resetPasswordWithToken);
         // Protected routes - Password management
         const auth = this.jwtMiddleware.verifyToken();
         this.router.patch("/change-password", auth, (0, validate_middleware_1.validateAuth)(auth_validator_1.changePasswordSchema), this.authController.changePassword);
