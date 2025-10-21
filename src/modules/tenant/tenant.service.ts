@@ -508,5 +508,234 @@ export class TenantService {
       }
     }
   }
+
+  // ==================== PROPERTY CRUD ====================
+
+  // Get all properties owned by tenant
+  async getMyProperties(tenantUserId: number) {
+    const properties = await prisma.property.findMany({
+      where: {
+        tenantId: tenantUserId,
+        deletedAt: null
+      },
+      include: {
+        images: {
+          where: { isPrimary: true },
+          take: 1
+        },
+        rooms: {
+          where: { deletedAt: null }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return {
+      success: true,
+      data: properties.map(property => ({
+        id: property.id,
+        name: property.name,
+        description: property.description,
+        city: property.city,
+        province: property.province,
+        address: property.address,
+        category: property.category,
+        imageUrls: property.images.map(img => img.url),
+        published: property.published,
+        tenantId: property.tenantId,
+        totalRooms: property.rooms.length,
+        activeRooms: property.rooms.length, // Can be refined later
+        createdAt: property.createdAt.toISOString(),
+        updatedAt: property.updatedAt.toISOString()
+      }))
+    }
+  }
+
+  // Get single property by ID
+  async getPropertyById(tenantUserId: number, propertyId: number) {
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantUserId,
+        deletedAt: null
+      },
+      include: {
+        images: true,
+        rooms: {
+          where: { deletedAt: null }
+        }
+      }
+    })
+
+    if (!property) {
+      throw new ApiError(404, 'Property tidak ditemukan')
+    }
+
+    return {
+      success: true,
+      data: {
+        id: property.id,
+        name: property.name,
+        description: property.description,
+        city: property.city,
+        province: property.province,
+        address: property.address,
+        category: property.category,
+        imageUrls: property.images.map(img => img.url),
+        published: property.published,
+        tenantId: property.tenantId,
+        totalRooms: property.rooms.length,
+        activeRooms: property.rooms.length,
+        createdAt: property.createdAt.toISOString(),
+        updatedAt: property.updatedAt.toISOString()
+      }
+    }
+  }
+
+  // Create new property
+  async createProperty(tenantUserId: number, data: any) {
+    // Generate slug from name
+    const slug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') +
+      '-' + Math.random().toString(36).substr(2, 9)
+
+    const property = await prisma.property.create({
+      data: {
+        tenantId: tenantUserId,
+        name: data.name,
+        slug: slug,
+        description: data.description || null,
+        address: data.address || null,
+        city: data.city || null,
+        province: data.province || null,
+        category: data.category || 'villa',
+        published: false,
+        images: data.imageUrls?.length > 0 ? {
+          create: data.imageUrls.map((url: string, index: number) => ({
+            url: url,
+            isPrimary: index === 0,
+            order: index
+          }))
+        } : undefined
+      },
+      include: {
+        images: true
+      }
+    })
+
+    return {
+      success: true,
+      message: 'Property berhasil ditambahkan',
+      data: {
+        id: property.id,
+        name: property.name,
+        description: property.description,
+        city: property.city,
+        province: property.province,
+        address: property.address,
+        category: property.category,
+        imageUrls: property.images.map(img => img.url),
+        published: property.published,
+        tenantId: property.tenantId,
+        createdAt: property.createdAt.toISOString(),
+        updatedAt: property.updatedAt.toISOString()
+      }
+    }
+  }
+
+  // Update property
+  async updateProperty(tenantUserId: number, propertyId: number, data: any) {
+    // Verify ownership
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantUserId,
+        deletedAt: null
+      }
+    })
+
+    if (!property) {
+      throw new ApiError(404, 'Property tidak ditemukan atau Anda tidak memiliki akses')
+    }
+
+    // Update property
+    const updated = await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        name: data.name ?? undefined,
+        description: data.description ?? undefined,
+        address: data.address ?? undefined,
+        city: data.city ?? undefined,
+        province: data.province ?? undefined,
+        category: data.category ?? undefined,
+        published: data.published ?? undefined
+      },
+      include: {
+        images: true
+      }
+    })
+
+    return {
+      success: true,
+      message: 'Property berhasil diupdate',
+      data: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        city: updated.city,
+        province: updated.province,
+        address: updated.address,
+        category: updated.category,
+        imageUrls: updated.images.map(img => img.url),
+        published: updated.published,
+        tenantId: updated.tenantId,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString()
+      }
+    }
+  }
+
+  // Delete property (soft delete)
+  async deleteProperty(tenantUserId: number, propertyId: number) {
+    // Verify ownership
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantUserId,
+        deletedAt: null
+      },
+      include: {
+        rooms: {
+          where: { deletedAt: null }
+        }
+      }
+    })
+
+    if (!property) {
+      throw new ApiError(404, 'Property tidak ditemukan atau Anda tidak memiliki akses')
+    }
+
+    // Check if property has active rooms
+    if (property.rooms.length > 0) {
+      throw new ApiError(400, 'Tidak dapat menghapus property yang masih memiliki room aktif')
+    }
+
+    // Soft delete
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        deletedAt: new Date()
+      }
+    })
+
+    return {
+      success: true,
+      message: 'Property berhasil dihapus'
+    }
+  }
 }
 

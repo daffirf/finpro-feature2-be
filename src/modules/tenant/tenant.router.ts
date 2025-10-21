@@ -35,13 +35,17 @@ export class TenantRouter {
     this.router.post('/bookings/:id/cancel', this.tenantController.cancelUserBooking)
 
     // Properties management
-    this.router.get('/properties', (req, res) => {
-      res.json({ message: 'Get tenant properties endpoint - to be implemented' })
-    })
+    this.router.get('/properties', this.tenantController.getMyProperties)
+    this.router.post('/properties', this.tenantController.createProperty)
+    this.router.get('/properties/:id', this.tenantController.getPropertyById)
+    this.router.patch('/properties/:id', this.tenantController.updateProperty)
+    this.router.delete('/properties/:id', this.tenantController.deleteProperty)
 
-    this.router.get('/properties/:id', (req, res) => {
-      res.json({ message: 'Get tenant property by ID endpoint - to be implemented' })
-    })
+    // Property calendar (converted from Next.js)
+    this.router.get('/properties/:id/calendar', this.tenantController.getPropertyCalendar)
+    
+    // All properties calendar (converted from Next.js)
+    this.router.get('/properties/calendar', this.tenantController.getAllPropertiesCalendar)
 
     // Property calendar (converted from Next.js)
     this.router.get('/properties/:id/calendar', this.tenantController.getPropertyCalendar)

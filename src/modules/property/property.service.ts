@@ -1,22 +1,20 @@
 import { prisma } from '@/utils/database'
 import { ApiError } from '@/utils/api-error'
-import { getPaginationParams, getPaginationMeta, createPaginatedResponse } from '@/utils/pagination.utils'
-import { BookingStatus } from '@/generated/prisma'
-
-export interface PropertySearchParams {
-  city?: string
-  checkIn?: string
-  checkOut?: string
-  guests?: number
-  sortBy?: string
-  minPrice?: string
-  maxPrice?: string
-  amenities?: string[]
-  page?: number
-  limit?: number
-}
+import { getPaginationMeta, createPaginatedResponse } from '@/utils/pagination.utils'
+import { buildOrderByClause } from '@/utils/query-parser'
+import { PropertyRepository } from './repository/property.repository'
+import { PropertySearchParams, PropertyWhereClause } from './types/property.types'
+import { CreatePropertyDto } from './dto/property.dto'
+import { CloudinaryService } from '@/services/cloudinary.service'
 
 export class PropertyService {
+  private propertyRepository: PropertyRepository
+  private cloudinaryService: CloudinaryService
+
+  constructor() {
+    this.propertyRepository = new PropertyRepository()
+    this.cloudinaryService = new CloudinaryService()
+  }
 
   async searchProperties(params: PropertySearchParams) {
     const {
@@ -28,38 +26,25 @@ export class PropertyService {
       minPrice,
       maxPrice,
       amenities = [],
+      category,
       page = 1,
       limit = 10
     } = params
 
     const skip = (page - 1) * limit
-    const where = this.buildWhereClause(city, guests, minPrice, maxPrice, amenities)
-    const orderBy = this.getOrderByClause(sortBy)
+    const where = this.buildWhereClause(city, guests, minPrice, maxPrice, amenities, category)
+    const orderBy = buildOrderByClause(sortBy)
 
     const [properties, total] = await Promise.all([
-      prisma.property.findMany({
-        where,
-        include: {
-          rooms: {
-            where: { 
-              capacity: { gte: guests },
-              deletedAt: null
-            },
-            select: { id: true, name: true, capacity: true, basePrice: true }
-          },
-          reviews: { select: { rating: true } },
-          _count: { select: { reviews: true } }
-        },
-        orderBy,
-        skip,
-        take: limit
-      }),
-      prisma.property.count({ where })
+      this.propertyRepository.findMany(where, orderBy, skip, limit),
+      this.propertyRepository.count(where)
     ])
 
     let availableProperties = properties
     
     if (checkIn && checkOut) {
+      const startDate = new Date(checkIn)
+      const endDate = new Date(checkOut)
       const roomIds = properties.flatMap(p => p.rooms.map(r => r.id))
       const bookedRoomIds = await this.getBookedRoomIds(roomIds as number[], checkIn, checkOut)
       
@@ -77,43 +62,7 @@ export class PropertyService {
   }
 
   async getPropertyById(id: number) {
-    const property = await prisma.property.findUnique({
-      where: {
-        id: id
-      },
-      include: {
-        rooms: {
-          where: {
-            deletedAt: null
-          },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            capacity: true,
-            basePrice: true,
-            images: true
-          }
-        },
-        reviews: {
-          include: {
-            user: {
-              select: {
-                name: true
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        _count: {
-          select: {
-            reviews: true
-          }
-        }
-      }
-    })
+    const property = await this.propertyRepository.findById(id)
 
     if (!property) {
       throw new ApiError(404, 'Properti tidak ditemukan')
@@ -135,18 +84,12 @@ export class PropertyService {
     const startDate = new Date(month)
     const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0)
 
-    // Get room base price
-    const room = await prisma.room.findUnique({
-      where: { id: roomId },
-      select: { basePrice: true }
-    })
+    const room = await this.propertyRepository.findRoomById(roomId)
 
     if (!room) {
       throw new ApiError(404, 'Kamar tidak ditemukan')
     }
 
-    // Generate price data for each day in the month
-    // Note: PriceRule tidak ada di schema, jadi kita gunakan base price
     const prices = []
     const currentDate = new Date(startDate)
 
@@ -155,8 +98,14 @@ export class PropertyService {
       const price = Number(room.basePrice)
       const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6
 
-      // Check if room is available for this date
-      const isAvailable = await this.checkRoomAvailability(roomId, dateStr)
+      const nextDate = new Date(currentDate)
+      nextDate.setDate(nextDate.getDate() + 1)
+      const isAvailable = await this.propertyRepository.checkRoomAvailability(
+        roomId,
+        currentDate,
+        nextDate
+      )
+
       prices.push({
         date: dateStr,
         price: Math.round(price),
@@ -175,9 +124,10 @@ export class PropertyService {
     guests: number, 
     minPrice: string | undefined, 
     maxPrice: string | undefined, 
-    amenities: string[]
-  ) {
-    const where: any = {
+    amenities: string[],
+    category?: string
+  ): PropertyWhereClause {
+    const where: PropertyWhereClause = {
       published: true,
       deletedAt: null,
       city: { contains: city, mode: 'insensitive' },
@@ -189,96 +139,173 @@ export class PropertyService {
       }
     }
 
-    // Note: basePrice ada di Room, bukan Property
-    // Untuk filter harga, perlu query rooms
+    if (category && (category === 'villa' || category === 'hotel' || category === 'apartment' || category === 'guest_house')) {
+      where.category = category
+    }
+
     if (minPrice || maxPrice) {
       const priceFilter: any = {}
       if (minPrice) priceFilter.gte = parseFloat(minPrice)
       if (maxPrice) priceFilter.lte = parseFloat(maxPrice)
       
-      where.rooms.some.basePrice = priceFilter
+      if (where.rooms?.some) {
+        where.rooms.some.basePrice = priceFilter
+      }
     }
 
     return where
   }
 
-  private getOrderByClause(sortBy: string) {
-    const orderByMap: Record<string, any> = {
-      // Property tidak memiliki basePrice, ada di Room
-      // Untuk sementara sort by name atau createdAt
-      'price_asc': { createdAt: 'asc' },
-      'price_desc': { createdAt: 'desc' },
-      'name_asc': { name: 'asc' },
-      'rating_desc': { createdAt: 'desc' }
+  async createProperty(tenantId: number, data: CreatePropertyDto, imageFile?: Express.Multer.File) {
+    const user = await prisma.user.findUnique({
+      where: { id: tenantId }
+    })
+
+    if (!user) {
+      throw new ApiError(404, 'User tidak ditemukan')
     }
-    return orderByMap[sortBy] || orderByMap['name_asc']
+
+    if (user.role !== 'tenant') {
+      throw new ApiError(403, 'Hanya tenant yang dapat mendaftarkan property')
+    }
+
+    const existingProperty = await this.propertyRepository.findBySlug(data.slug)
+    if (existingProperty) {
+      throw new ApiError(400, 'Slug property sudah digunakan')
+    }
+
+    const property = await this.propertyRepository.create(tenantId, data)
+
+    if (imageFile) {
+      const uploadResult = await this.cloudinaryService.upload(imageFile)
+      await this.propertyRepository.createPropertyImage(property.id, uploadResult.secure_url, true)
+    }
+
+    const createdProperty = await this.propertyRepository.findById(property.id)
+
+    return {
+      message: 'Property berhasil didaftarkan',
+      property: createdProperty
+    }
   }
 
-  private async getBookedRoomIds(
-    roomIds: number[], 
-    checkIn: string, 
-    checkOut: string
-  ): Promise<Set<number>> {
-    const startDate = new Date(checkIn)
-    const endDate = new Date(checkOut)
-
-    // Booking tidak memiliki roomId langsung, harus cek melalui items
-    const bookings = await prisma.booking.findMany({
+  async getMyProperties(tenantId: number) {
+    const properties = await prisma.property.findMany({
       where: {
-        status: { notIn: [BookingStatus.cancelled, BookingStatus.expired, BookingStatus.rejected] },
-        OR: [{
-          AND: [
-            { checkIn: { lt: endDate } },
-            { checkOut: { gt: startDate } }
-          ]
-        }]
+        tenantId: tenantId,
+        deletedAt: null
       },
       include: {
-        items: {
-          where: {
-            roomId: { in: roomIds }
-          },
-          select: { roomId: true }
+        images: {
+          where: { isPrimary: true },
+          take: 1
+        },
+        rooms: {
+          where: { deletedAt: null }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return {
+      success: true,
+      data: properties.map(property => ({
+        id: property.id,
+        name: property.name,
+        description: property.description,
+        city: property.city,
+        province: property.province,
+        address: property.address,
+        category: property.category,
+        imageUrls: property.images.map(img => img.url),
+        published: property.published,
+        tenantId: property.tenantId,
+        totalRooms: property.rooms.length,
+        activeRooms: property.rooms.length,
+        createdAt: property.createdAt.toISOString(),
+        updatedAt: property.updatedAt.toISOString()
+      }))
+    }
+  }
+
+  async updateProperty(tenantId: number, propertyId: number, data: Partial<CreatePropertyDto>, imageFile?: Express.Multer.File) {
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantId,
+        deletedAt: null
+      }
+    })
+
+    if (!property) {
+      throw new ApiError(404, 'Property tidak ditemukan atau Anda tidak memiliki akses')
+    }
+
+    const updated = await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        name: data.name ?? undefined,
+        slug: data.slug ?? undefined,
+        description: data.description ?? undefined,
+        address: data.address ?? undefined,
+        city: data.city ?? undefined,
+        province: data.province ?? undefined,
+        category: data.category ?? undefined,
+        published: data.published ?? undefined,
+        latitude: data.latitude ?? undefined,
+        longitude: data.longitude ?? undefined
+      },
+      include: {
+        images: true
+      }
+    })
+
+    if (imageFile) {
+      const uploadResult = await this.cloudinaryService.upload(imageFile)
+      await this.propertyRepository.createPropertyImage(updated.id, uploadResult.secure_url, false)
+    }
+
+    return {
+      success: true,
+      message: 'Property berhasil diupdate',
+      data: updated
+    }
+  }
+
+  async deleteProperty(tenantId: number, propertyId: number) {
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantId,
+        deletedAt: null
+      },
+      include: {
+        rooms: {
+          where: { deletedAt: null }
         }
       }
     })
 
-    const bookedRoomIds = new Set<number>()
-    bookings.forEach(booking => {
-      booking.items.forEach(item => {
-        bookedRoomIds.add(item.roomId as number)
-      })
-    })
+    if (!property) {
+      throw new ApiError(404, 'Property tidak ditemukan atau Anda tidak memiliki akses')
+    }
 
-    return bookedRoomIds
-  }
+    if (property.rooms.length > 0) {
+      throw new ApiError(400, 'Tidak dapat menghapus property yang masih memiliki room aktif')
+    }
 
-  private async checkRoomAvailability(roomId: number, date: string): Promise<boolean> {
-    const startDate = new Date(date)
-    const endDate = new Date(date)
-    endDate.setDate(endDate.getDate() + 1)
-
-    const conflictingBooking = await prisma.booking.findFirst({
-      where: {
-        items: {
-          some: {
-            roomId: roomId
-          }
-        },
-        status: {
-          notIn: [BookingStatus.cancelled, BookingStatus.expired, BookingStatus.rejected]
-        },
-        OR: [
-          {
-            AND: [
-              { checkIn: { lt: endDate } },
-              { checkOut: { gt: startDate } }
-            ]
-          }
-        ]
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        deletedAt: new Date()
       }
     })
 
-    return !conflictingBooking
+    return {
+      success: true,
+      message: 'Property berhasil dihapus'
+    }
   }
 }

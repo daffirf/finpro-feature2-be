@@ -73,5 +73,76 @@ export class TenantController {
       next(error)
     }
   }
+
+  // ==================== PROPERTY CRUD ====================
+
+  // Get all tenant properties
+  getMyProperties = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantUserId = (req as any).user?.id
+      const result = await this.tenantService.getMyProperties(tenantUserId)
+      
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // Get single property by ID
+  getPropertyById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantUserId = (req as any).user?.id
+      const propertyId = parseInt(req.params.id)
+      
+      const result = await this.tenantService.getPropertyById(tenantUserId, propertyId)
+      
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // Create new property
+  createProperty = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantUserId = (req as any).user?.id
+      const data = req.body
+      
+      const result = await this.tenantService.createProperty(tenantUserId, data)
+      
+      res.status(201).json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // Update property
+  updateProperty = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantUserId = (req as any).user?.id
+      const propertyId = parseInt(req.params.id)
+      const data = req.body
+      
+      const result = await this.tenantService.updateProperty(tenantUserId, propertyId, data)
+      
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // Delete property
+  deleteProperty = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantUserId = (req as any).user?.id
+      const propertyId = parseInt(req.params.id)
+      
+      const result = await this.tenantService.deleteProperty(tenantUserId, propertyId)
+      
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
 }
 
