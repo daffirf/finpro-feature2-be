@@ -46,16 +46,12 @@ export class PropertyService {
       const startDate = new Date(checkIn)
       const endDate = new Date(checkOut)
       const roomIds = properties.flatMap(p => p.rooms.map(r => r.id))
-      const bookedRoomIds = await this.propertyRepository.getBookedRoomIds(
-        roomIds,
-        startDate,
-        endDate
-      )
+      const bookedRoomIds = await this.getBookedRoomIds(roomIds as number[], checkIn, checkOut)
       
       availableProperties = properties
         .map(property => ({
           ...property,
-          rooms: property.rooms.filter(room => !bookedRoomIds.has(room.id))
+          rooms: property.rooms.filter(room => !bookedRoomIds.has(room.id as number))
         }))
         .filter(property => property.rooms.length > 0)
     }
@@ -76,8 +72,13 @@ export class PropertyService {
   }
 
   async getPropertyPrices(propertyId: number, roomId: number, month: string) {
-    if (!roomId || !month) {
-      throw new ApiError(400, 'Parameter roomId dan month diperlukan')
+    if (!month) {
+      throw new ApiError(400, 'Parameter month atau checkIn diperlukan')
+    }
+    
+    // Default roomId to 1 if not provided
+    if (!roomId) {
+      roomId = 1
     }
 
     const startDate = new Date(month)

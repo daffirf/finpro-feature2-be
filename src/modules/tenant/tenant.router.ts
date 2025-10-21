@@ -47,6 +47,12 @@ export class TenantRouter {
     // All properties calendar (converted from Next.js)
     this.router.get('/properties/calendar', this.tenantController.getAllPropertiesCalendar)
 
+    // Property calendar (converted from Next.js)
+    this.router.get('/properties/:id/calendar', this.tenantController.getPropertyCalendar)
+    
+    // All properties calendar (converted from Next.js)
+    this.router.get('/properties/calendar', this.tenantController.getAllPropertiesCalendar)
+
     // Price rules management
     this.router.get('/price-rules', (req, res) => {
       res.json({ message: 'Get price rules endpoint - to be implemented' })

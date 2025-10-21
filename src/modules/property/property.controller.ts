@@ -48,8 +48,8 @@ export class PropertyController {
 
   getPropertyById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id)
-      const result = await this.propertyService.getPropertyById(id)
+      const id = req.params.id
+      const result = await this.propertyService.getPropertyById(parseInt(id))
       res.status(200).json(result)
     } catch (error) {
       next(error)
@@ -58,16 +58,29 @@ export class PropertyController {
 
   getPropertyPrices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = parseInt(req.params.id)
-      const roomId = parseInt(req.query.roomId as string)
+      const id = req.params.id
+      const roomId = req.query.roomId as string
       const month = req.query.month as string
+      const checkIn = req.query.checkIn as string
+      const checkOut = req.query.checkOut as string
       
-      const result = await this.propertyService.getPropertyPrices(
-        id,
-        roomId,
-        month
-      )
-      res.status(200).json(result)
+      // Support both formats: month OR checkIn+checkOut
+      if (checkIn && checkOut) {
+        // Use checkIn as month parameter
+        const result = await this.propertyService.getPropertyPrices(
+          parseInt(id),
+          roomId ? parseInt(roomId) : 1, // Default roomId = 1 if not provided
+          checkIn
+        )
+        res.status(200).json(result)
+      } else {
+        const result = await this.propertyService.getPropertyPrices(
+          parseInt(id),
+          parseInt(roomId),
+          month
+        )
+        res.status(200).json(result)
+      }
     } catch (error) {
       next(error)
     }
