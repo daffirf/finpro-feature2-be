@@ -77,5 +77,27 @@ export class UserController {
       next(error);
     }
   };
+
+  uploadAvatar = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id);
+      const currentUserId = (req as any).user?.id;
+      const currentUserRole = (req as any).user?.role;
+      const file = req.file;
+
+      if (id !== currentUserId && currentUserRole !== 'admin') {
+        throw new ApiError(403, "Forbidden: You can only update your own avatar");
+      }
+
+      if (!file) {
+        throw new ApiError(400, "File avatar diperlukan");
+      }
+
+      const result = await this.userService.uploadAvatar(id, file);
+      res.status(200).send(result);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 

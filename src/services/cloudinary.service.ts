@@ -19,9 +19,7 @@ export class CloudinaryService {
     }
 
     upload = async (file: Express.Multer.File): Promise<UploadApiResponse> => {
-        const stream = this.bufferToStream(file.buffer)
-
-        return new Promise((resolve, reject) => { //resoleve dan reject itu callback, callback adalah fungsi yang akan dieksekusi setelah promise selesai
+        return new Promise((resolve, reject) => {
             const readableStream = this.bufferToStream(file.buffer)
 
             const uploadStream = cloudinary.uploader.upload_stream((err, result) => {

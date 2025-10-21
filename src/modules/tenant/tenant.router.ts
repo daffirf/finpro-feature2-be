@@ -1,13 +1,16 @@
 import { Router } from 'express'
 import { JwtMiddleware } from '@/middlewares/jwt.middleware'
+import { TenantController } from './tenant.controller'
 
 export class TenantRouter {
   private router: Router
   private jwtMiddleware: JwtMiddleware
+  private tenantController: TenantController
 
   constructor() {
     this.router = Router()
     this.jwtMiddleware = new JwtMiddleware()
+    this.tenantController = new TenantController()
     this.initializeRoutes()
   }
 
@@ -28,14 +31,21 @@ export class TenantRouter {
       res.json({ message: 'Reject booking endpoint - to be implemented' })
     })
 
-    // Properties management
-    this.router.get('/properties', (req, res) => {
-      res.json({ message: 'Get tenant properties endpoint - to be implemented' })
-    })
+    // Cancel user booking (converted from Next.js)
+    this.router.post('/bookings/:id/cancel', this.tenantController.cancelUserBooking)
 
-    this.router.get('/properties/:id', (req, res) => {
-      res.json({ message: 'Get tenant property by ID endpoint - to be implemented' })
-    })
+    // Properties management
+    this.router.get('/properties', this.tenantController.getMyProperties)
+    this.router.post('/properties', this.tenantController.createProperty)
+    this.router.get('/properties/:id', this.tenantController.getPropertyById)
+    this.router.patch('/properties/:id', this.tenantController.updateProperty)
+    this.router.delete('/properties/:id', this.tenantController.deleteProperty)
+
+    // Property calendar (converted from Next.js)
+    this.router.get('/properties/:id/calendar', this.tenantController.getPropertyCalendar)
+    
+    // All properties calendar (converted from Next.js)
+    this.router.get('/properties/calendar', this.tenantController.getAllPropertiesCalendar)
 
     // Price rules management
     this.router.get('/price-rules', (req, res) => {
@@ -51,10 +61,8 @@ export class TenantRouter {
       res.json({ message: 'Get tenant rooms endpoint - to be implemented' })
     })
 
-    // Reports
-    this.router.get('/reports', (req, res) => {
-      res.json({ message: 'Get tenant reports endpoint - to be implemented' })
-    })
+    // Reports (Sales Report & Analysis)
+    this.router.get('/reports', this.tenantController.getSalesReport)
   }
 
   getRouter = () => {

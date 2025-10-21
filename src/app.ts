@@ -11,6 +11,7 @@ import { TenantRouter } from "./modules/tenant/tenant.router";
 import { UserRouter } from "./modules/user/user.router";
 import { UploadRouter } from "./modules/upload/upload.router";
 import { CronRouter } from "./modules/cron/cron.router";
+import { OAuthRouter } from "./modules/OAuth/oauth.router";
 import { CronService } from "./services/cron.service";
 
 export class App {
@@ -48,9 +49,10 @@ export class App {
     const userRouter = new UserRouter();
     const uploadRouter = new UploadRouter();
     const cronRouter = new CronRouter();
+    const oauthRouter = new OAuthRouter();
 
-    // API routes
     this.app.use("/api/auth", authRouter.getRouter());
+    this.app.use("/api/oauth", oauthRouter.getRouter());
     this.app.use("/api/bookings", bookingRouter.getRouter());
     this.app.use("/api/properties", propertyRouter.getRouter());
     this.app.use("/api/reviews", reviewRouter.getRouter());
@@ -70,6 +72,7 @@ export class App {
         version: "1.0.0",
         endpoints: {
           auth: "/api/auth/*",
+          oauth: "/api/oauth/*",
           bookings: "/api/bookings/*",
           properties: "/api/properties/*",
           reviews: "/api/reviews/*",

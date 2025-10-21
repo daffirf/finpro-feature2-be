@@ -31,6 +31,7 @@ model User {
   reviewReplies      ReviewReply[]
   reviews            Review[]
   verificationTokens VerificationToken[]
+  peakSeasons        PeakSeason[]
 
   @@index([email])
   @@index([role])
@@ -67,7 +68,7 @@ model Property {
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   deletedAt   DateTime?        @map("deleted_at")
-  category    PropertyCategory @default(house)
+  category    PropertyCategory @default(villa)
   tenant      User             @relation("PropertyOwner", fields: [tenantId], references: [id])
   images      PropertyImage[]
   reviews     Review[]
@@ -185,6 +186,24 @@ model Booking {
   @@map("bookings")
 }
 
+model PeakSeason {
+  id                   Int             @id @default(autoincrement())
+  tenantId             Int             @map("tenant_id")
+  name                 String
+  startDate            DateTime        @map("start_date") @db.Date
+  endDate              DateTime        @map("end_date") @db.Date
+  changeType           PriceChangeType @map("change_type")
+  changeValue          Float           @map("change_value")
+  applyToAllProperties Boolean         @default(false) @map("apply_to_all_properties")
+  propertyIds          Int[]           @map("property_ids")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+  tenant               User            @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([startDate, endDate])
+  @@map("peak_seasons")
+}
 model BookingItem {
   id        Int      @id @default(autoincrement())
   bookingId Int      @map("booking_id")
@@ -269,6 +288,11 @@ enum BookingStatus {
   rejected
 }
 
+enum PriceChangeType {
+  nominal
+  percentage
+}
+
 enum PaymentMethod {
   manual_transfer
   payment_gateway
@@ -276,7 +300,7 @@ enum PaymentMethod {
 
 enum PropertyCategory {
   villa
-  house
+  hotel
   apartment
   guest_house
 }

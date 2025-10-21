@@ -2,6 +2,9 @@ import { Router } from 'express'
 import { PropertyController } from './property.controller'
 import { JwtMiddleware } from '@/middlewares/jwt.middleware'
 import { rbac } from '@/middlewares/rbac.middleware'
+import { uploadImage, handleMulterError } from '@/config/multer.config'
+import { validateAuth } from '@/middlewares/validate.middleware'
+import { createPropertySchema } from './validator/property.validator'
 
 export class PropertyRouter {
   private router: Router
@@ -18,22 +21,31 @@ export class PropertyRouter {
   private initializeRoutes() {
     const auth = this.jwtMiddleware.verifyToken()
     
-    // Public routes - no authentication required
-    // Search properties
     this.router.get('/search', this.propertyController.searchProperties)
-    
-    // Get property by ID
+    this.router.get('/my-properties', auth, rbac.onlyTenant, this.propertyController.getMyProperties)
     this.router.get('/:id', this.propertyController.getPropertyById)
-    
-    // Get property prices
     this.router.get('/:id/prices', this.propertyController.getPropertyPrices)
     
-    // Protected routes - Only TENANT can manage properties
-    // Note: Uncomment these when PropertyController has these methods
-    // this.router.post('/', auth, rbac.onlyTenant, this.propertyController.createProperty)
-    // this.router.patch('/:id', auth, rbac.onlyTenant, this.propertyController.updateProperty)
-    // this.router.delete('/:id', auth, rbac.onlyTenant, this.propertyController.deleteProperty)
-    // this.router.get('/my-properties', auth, rbac.onlyTenant, this.propertyController.getMyProperties)
+    this.router.post(
+      '/', 
+      auth, 
+      rbac.onlyTenant, 
+      uploadImage.single('image'), 
+      handleMulterError,
+      validateAuth(createPropertySchema),
+      this.propertyController.createProperty
+    )
+    
+    this.router.patch(
+      '/:id', 
+      auth, 
+      rbac.onlyTenant, 
+      uploadImage.single('image'),
+      handleMulterError,
+      this.propertyController.updateProperty
+    )
+    
+    this.router.delete('/:id', auth, rbac.onlyTenant, this.propertyController.deleteProperty)
   }
 
   getRouter = () => {
