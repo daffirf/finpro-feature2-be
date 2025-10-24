@@ -44,8 +44,13 @@ export class PropertyService {
   }
 
   async getPropertyPrices(propertyId: number, roomId: number, month: string) {
-    if (!roomId || !month) {
-      throw new ApiError(400, 'Parameter roomId dan month diperlukan')
+    if (!month) {
+      throw new ApiError(400, 'Parameter month atau checkIn diperlukan')
+    }
+    
+    // Default roomId to 1 if not provided
+    if (!roomId) {
+      roomId = 1
     }
 
     const startDate = new Date(month)

@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/database'
 import { sendBookingCancellation, sendCheckInReminder } from '@/services/email.service'
 import { BookingStatus } from '@/generated/prisma'
+import { ApiError } from '@/utils/api-error'
 
 export class CronService {
   static init() {
@@ -65,7 +66,7 @@ export class CronService {
       }
     } catch (error) {
       console.error('Cancel expired bookings error:', error)
-      throw new Error('Failed to cancel expired bookings')
+      throw new ApiError(500, 'Failed to cancel expired bookings')
     }
   }
 
@@ -122,7 +123,7 @@ export class CronService {
       }
     } catch (error) {
       console.error('Send check-in reminders error:', error)
-      throw new Error('Failed to send check-in reminders')
+      throw new ApiError(500, 'Failed to send check-in reminders')
     }
   }
 }

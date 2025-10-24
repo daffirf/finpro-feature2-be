@@ -12,9 +12,10 @@ export interface CreateBookingDTO {
   roomId: number
   checkIn: string
   checkOut: string
-  guests: number
+  totalGuests: number
   unitCount?: number
   notes?: string
+  paymentMethod?: string
 }
 
 export class BookingService {
@@ -63,7 +64,7 @@ export class BookingService {
         userId,
         checkIn: new Date(data.checkIn),
         checkOut: new Date(data.checkOut),
-        totalGuests: data.guests,
+        totalGuests: data.totalGuests,
         totalPrice: subTotal,
         notes: data.notes || null,
         status: BookingStatus.pending_payment,

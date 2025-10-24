@@ -9,6 +9,7 @@ export class BookingController {
 
   constructor() {
     this.bookingService = new BookingService()
+    this.uploadPaymentProof = this.uploadPaymentProof.bind(this)
   }
 
   createBooking = async (req: Request, res: Response, next: NextFunction) => {
@@ -24,8 +25,8 @@ export class BookingController {
   getBookingById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as any).user?.id
-      const bookingId = parseInt(req.params.id)
-      const result = await this.bookingService.getBookingById(bookingId, userId)
+      const bookingId = req.params.id
+      const result = await this.bookingService.getBookingById(parseInt(bookingId), userId)
       res.status(200).json(result)
     } catch (error) {
       next(error)
@@ -35,9 +36,9 @@ export class BookingController {
   cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as any).user?.id
-      const bookingId = parseInt(req.params.id)
+      const bookingId = req.params.id
       const { reason } = req.body
-      const result = await this.bookingService.cancelBooking(bookingId, userId, reason)
+      const result = await this.bookingService.cancelBooking(parseInt(bookingId), userId, reason)
       res.status(200).json(result)
     } catch (error) {
       next(error)
@@ -48,7 +49,7 @@ export class BookingController {
     try {
       const userId = (req as any).user?.id
       const file = req.file
-      const bookingId = parseInt(req.body.bookingId)
+      const bookingId = req.body.bookingId
 
       if (!file || !bookingId) {
         return res.status(400).json({

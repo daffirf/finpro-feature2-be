@@ -1,6 +1,7 @@
 import { prisma } from './database'
 import { BookingStatus } from '@/generated/prisma'
 import { calculateNights } from './date.utils'
+import { ApiError } from './api-error'
 
 /**
  * Check if a room is available for the specified date range
@@ -84,7 +85,7 @@ export function validateBookingDates(
  * Can be extended with price rules in the future
  */
 export async function calculateBookingPrice(
-  roomId: number,
+  roomId: number, 
   checkIn: string | Date,
   checkOut: string | Date,
   unitCount: number = 1
@@ -94,7 +95,7 @@ export async function calculateBookingPrice(
   })
 
   if (!room) {
-    throw new Error('Room not found')
+    throw new ApiError(404, 'Room not found')
   }
 
   const nights = calculateNights(checkIn, checkOut)
