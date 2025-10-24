@@ -72,9 +72,12 @@ export class App {
         version: "1.0.0",
         endpoints: {
           auth: "/api/auth/*",
+          auth_register_user: "/api/auth/register/user",
+          auth_register_tenant: "/api/auth/register/tenant",
           oauth: "/api/oauth/*",
           bookings: "/api/bookings/*",
           properties: "/api/properties/*",
+          property_search: "/api/properties/search",
           reviews: "/api/reviews/*",
           rooms: "/api/rooms/*",
           tenant: "/api/tenant/*",

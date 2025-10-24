@@ -60,6 +60,7 @@ export class AuthService {
     };
   }
 
+
   /**
    * Verify email token (GET request to check validity)
    */

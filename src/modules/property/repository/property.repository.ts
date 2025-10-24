@@ -216,12 +216,43 @@ export class PropertyRepository {
         rooms: {
           where: { deletedAt: null }
         },
-        images: true,
+        images: {
+          where: { isPrimary: true },
+          take: 1
+        },
         _count: {
           select: { reviews: true, rooms: true }
         }
       },
       orderBy: { createdAt: 'desc' }
+    })
+  }
+
+  async findByIdAndTenantId(propertyId: number, tenantId: number) {
+    return prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: tenantId,
+        deletedAt: null
+      },
+      include: {
+        rooms: {
+          where: { deletedAt: null }
+        },
+        images: true
+      }
+    })
+  }
+
+  async findUserById(userId: number) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+        name: true,
+        email: true
+      }
     })
   }
 }

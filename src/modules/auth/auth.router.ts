@@ -35,6 +35,8 @@ export class AuthRouter {
   private initializedRoutes() {
     // Public routes - Registration & Email Verification
     this.router.post("/register", validateAuth(registerSchema), this.authController.register);
+    this.router.post("/register/user", validateAuth(registerSchema), this.authController.registerUser);
+    this.router.post("/register/tenant", validateAuth(registerSchema), this.authController.registerTenant);
     this.router.get("/verify-email", this.authController.verifyEmailToken);
     this.router.post("/set-password", validateAuth(setPasswordSchema), this.authController.setPassword);
     
