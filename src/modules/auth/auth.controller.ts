@@ -28,6 +28,42 @@ export class AuthController {
   };
 
   /**
+   * POST /api/auth/register/user
+   * Register as user role
+   */
+  registerUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data: RegisterDTO = req.body;
+      const result = await this.authService.register({ ...data, role: 'user' });
+      
+      res.status(201).json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/auth/register/tenant
+   * Register as tenant role
+   */
+  registerTenant = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data: RegisterDTO = req.body;
+      const result = await this.authService.register({ ...data, role: 'tenant' });
+      
+      res.status(201).json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * GET /api/auth/verify-email?token=xxx
    * Check token validity before setting password
    */

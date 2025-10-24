@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
 import { PropertyService } from './property.service'
 import { ApiError } from '@/utils/api-error'
+import { successHandler } from '@/helpers/successHandler'
+import { errorHandler } from '@/helpers/errorHandler'
+import { safeNumber, safeDate } from '@/utils/query-helper'
 
 export class PropertyController {
   private propertyService: PropertyService
@@ -9,50 +12,39 @@ export class PropertyController {
     this.propertyService = new PropertyService()
   }
 
-  searchProperties = async (req: Request, res: Response, next: NextFunction) => {
+  getPropertyById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const {
-        city,
-        checkIn,
-        checkOut,
-        guests,
-        sortBy,
-        minPrice,
-        maxPrice,
-        amenities,
-        category,
-        page,
-        limit
-      } = req.query
-
-      const searchParams = {
-        city: city as string,
-        checkIn: checkIn as string,
-        checkOut: checkOut as string,
-        guests: guests ? parseInt(guests as string) : undefined,
-        sortBy: sortBy as string,
-        minPrice: minPrice as string,
-        maxPrice: maxPrice as string,
-        amenities: amenities ? (amenities as string).split(',').filter(Boolean) : undefined,
-        category: category as any,
-        page: page ? parseInt(page as string) : undefined,
-        limit: limit ? parseInt(limit as string) : undefined
+      const id = safeNumber(req.params.id)
+      if (!id) {
+        throw new ApiError(400, 'Invalid property ID')
       }
 
-      const result = await this.propertyService.searchProperties(searchParams)
-      res.status(200).json(result)
+      const checkInDate = safeDate(req.query.checkInDate)
+      const checkOutDate = safeDate(req.query.checkOutDate)
+
+      const result = await this.propertyService.getPropertyById(id, checkInDate, checkOutDate)
+      
+      return successHandler(res, result, 'Property details retrieved successfully', 200)
     } catch (error) {
       next(error)
     }
   }
 
-  getPropertyById = async (req: Request, res: Response, next: NextFunction) => {
+  getPropertyDetails = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = req.params.id
-      const result = await this.propertyService.getPropertyById(parseInt(id))
-      res.status(200).json(result)
+      const propertyId = safeNumber(req.params.id)
+      if (!propertyId) {
+        throw new ApiError(400, 'Invalid property ID')
+      }
+
+      const checkInDate = safeDate(req.query.checkInDate)
+      const checkOutDate = safeDate(req.query.checkOutDate)
+
+      const result = await this.propertyService.getPropertyById(propertyId, checkInDate, checkOutDate)
+      
+      return successHandler(res, result, 'Property details retrieved successfully', 200)
     } catch (error) {
-      next(error)
+      return errorHandler(res, 'Failed to get property details', 400, (error as Error).message)
     }
   }
 

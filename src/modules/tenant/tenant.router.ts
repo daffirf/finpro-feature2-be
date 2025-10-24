@@ -1,16 +1,21 @@
 import { Router } from 'express'
 import { JwtMiddleware } from '@/middlewares/jwt.middleware'
+import { rbac } from '@/middlewares/rbac.middleware'
 import { TenantController } from './tenant.controller'
+import { RoomController } from '../room/room.controller'
+import { uploadImage, handleMulterError } from '@/config/multer.config'
 
 export class TenantRouter {
   private router: Router
   private jwtMiddleware: JwtMiddleware
   private tenantController: TenantController
+  private roomController: RoomController
 
   constructor() {
     this.router = Router()
     this.jwtMiddleware = new JwtMiddleware()
     this.tenantController = new TenantController()
+    this.roomController = new RoomController()
     this.initializeRoutes()
   }
 
@@ -34,13 +39,6 @@ export class TenantRouter {
     // Cancel user booking (converted from Next.js)
     this.router.post('/bookings/:id/cancel', this.tenantController.cancelUserBooking)
 
-    // Properties management
-    this.router.get('/properties', this.tenantController.getMyProperties)
-    this.router.post('/properties', this.tenantController.createProperty)
-    this.router.get('/properties/:id', this.tenantController.getPropertyById)
-    this.router.patch('/properties/:id', this.tenantController.updateProperty)
-    this.router.delete('/properties/:id', this.tenantController.deleteProperty)
-
     // Property calendar (converted from Next.js)
     this.router.get('/properties/:id/calendar', this.tenantController.getPropertyCalendar)
     
@@ -63,9 +61,24 @@ export class TenantRouter {
     })
 
     // Rooms management
-    this.router.get('/rooms', (req, res) => {
-      res.json({ message: 'Get tenant rooms endpoint - to be implemented' })
-    })
+    this.router.get('/rooms', rbac.onlyTenant, this.roomController.getMyRooms)
+    this.router.get('/properties/:propertyId/rooms', rbac.onlyTenant, this.roomController.getRoomsByProperty)
+    this.router.post(
+      '/rooms',
+      rbac.onlyTenant,
+      uploadImage.array('images', 5),
+      handleMulterError,
+      this.roomController.createRoom
+    )
+    this.router.get('/rooms/:id', rbac.onlyTenant, this.roomController.getRoomById)
+    this.router.patch(
+      '/rooms/:id',
+      rbac.onlyTenant,
+      uploadImage.array('images', 5),
+      handleMulterError,
+      this.roomController.updateRoom
+    )
+    this.router.delete('/rooms/:id', rbac.onlyTenant, this.roomController.deleteRoom)
 
     // Reports (Sales Report & Analysis)
     this.router.get('/reports', this.tenantController.getSalesReport)
